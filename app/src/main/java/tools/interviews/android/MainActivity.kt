@@ -1,8 +1,8 @@
 package tools.interviews.android
 
 import android.os.Bundle
-import android.view.View
 import android.widget.CalendarView
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -26,6 +26,7 @@ import java.time.format.DateTimeFormatter
 class MainActivity : AppCompatActivity() {
 
     private lateinit var toolbar: MaterialToolbar
+    private lateinit var buttonSettings: ImageButton
     private lateinit var calendarView: CalendarView
     private lateinit var textListHeader: TextView
     private lateinit var buttonClearDate: MaterialButton
@@ -53,6 +54,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupViews() {
         toolbar = findViewById(R.id.toolbar)
+        buttonSettings = findViewById(R.id.buttonSettings)
         calendarView = findViewById(R.id.calendarView)
         textListHeader = findViewById(R.id.textListHeader)
         buttonClearDate = findViewById(R.id.buttonClearDate)
@@ -62,15 +64,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
-        setSupportActionBar(toolbar)
-        toolbar.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.action_settings -> {
-                    // Settings will be implemented later
-                    true
-                }
-                else -> false
-            }
+        buttonSettings.setOnClickListener {
+            // Settings will be implemented later
         }
     }
 
@@ -118,9 +113,11 @@ class MainActivity : AppCompatActivity() {
         if (selectedDate != null) {
             textListHeader.text = "Interviews on ${selectedDate!!.format(dateFormatter)}"
             buttonClearDate.isVisible = true
+            fabAddInterview.show()
         } else {
             textListHeader.text = "Upcoming Interviews"
             buttonClearDate.isVisible = false
+            fabAddInterview.hide()
         }
     }
 
@@ -153,10 +150,10 @@ class MainActivity : AppCompatActivity() {
 
             if (selectedDate != null) {
                 emptyTitle.text = "No Interviews This Day"
-                emptyDescription.text = "Select another date or tap + to add an interview"
+                emptyDescription.text = "Tap + to add an interview for this date"
             } else {
-                emptyTitle.text = "No Interviews Scheduled"
-                emptyDescription.text = "Tap + to add your first interview"
+                emptyTitle.text = "No Upcoming Interviews"
+                emptyDescription.text = "Select a date to add an interview"
             }
         }
     }
