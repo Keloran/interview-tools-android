@@ -48,6 +48,7 @@ class AddInterviewActivity : AppCompatActivity() {
     private var selectedDeadline: LocalDate? = null
     private var initialDate: LocalDate? = null  // Store the date passed from calendar
     private var existingCompanies = mutableListOf<String>()
+    private var isNextStageMode = false
 
     private val dateFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")
     private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
@@ -57,6 +58,10 @@ class AddInterviewActivity : AppCompatActivity() {
         const val EXTRA_INTERVIEW = "interview"
         const val EXTRA_COMPANIES = "companies"
         const val EXTRA_NEW_COMPANY = "new_company"
+        const val EXTRA_NEXT_STAGE_MODE = "next_stage_mode"
+        const val EXTRA_COMPANY_NAME = "company_name"
+        const val EXTRA_CLIENT_COMPANY = "client_company"
+        const val EXTRA_JOB_TITLE = "job_title"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -113,16 +118,42 @@ class AddInterviewActivity : AppCompatActivity() {
             initialDate = LocalDate.parse(dateString)
             selectedDate = initialDate
         }
+
+        // Check if this is next stage mode
+        isNextStageMode = intent.getBooleanExtra(EXTRA_NEXT_STAGE_MODE, false)
+        if (isNextStageMode) {
+            // Update toolbar title
+            toolbar.title = "Next Stage"
+
+            // Pre-fill company name and job title
+            intent.getStringExtra(EXTRA_COMPANY_NAME)?.let {
+                editCompanyName.setText(it)
+            }
+            intent.getStringExtra(EXTRA_CLIENT_COMPANY)?.let {
+                editClientCompany.setText(it)
+            }
+            intent.getStringExtra(EXTRA_JOB_TITLE)?.let {
+                editJobTitle.setText(it)
+            }
+
+            // Default to first stage that isn't Applied (Phone Screen)
+            selectedStage = InterviewStage.PHONE_SCREEN
+        }
     }
 
     private fun setupDropdowns() {
-        // Stage dropdown - default to Applied
-        val stages = InterviewStage.entries.map { it.displayName }
+        // Stage dropdown - exclude Applied in next stage mode
+        val availableStages = if (isNextStageMode) {
+            InterviewStage.entries.filter { it != InterviewStage.APPLIED }
+        } else {
+            InterviewStage.entries.toList()
+        }
+        val stages = availableStages.map { it.displayName }
         val stageAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, stages)
         dropdownStage.setAdapter(stageAdapter)
         dropdownStage.setText(selectedStage.displayName, false)
         dropdownStage.setOnItemClickListener { _, _, position, _ ->
-            selectedStage = InterviewStage.entries[position]
+            selectedStage = availableStages[position]
             updateInterviewDetailsVisibility()
             validateForm()
         }

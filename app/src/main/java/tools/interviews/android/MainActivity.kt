@@ -152,6 +152,8 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = adapter
     }
 
+    private var lastSwipeDistance = 0f
+
     private fun setupSwipeActions() {
         val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
@@ -162,15 +164,28 @@ class MainActivity : AppCompatActivity() {
                 target: RecyclerView.ViewHolder
             ): Boolean = false
 
+            override fun getSwipeThreshold(viewHolder: RecyclerView.ViewHolder): Float {
+                // Lower threshold to allow partial swipes
+                return 0.3f
+            }
+
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.adapterPosition
                 val interview = adapter.currentList[position]
+                val itemWidth = viewHolder.itemView.width
 
                 when (direction) {
                     ItemTouchHelper.RIGHT -> {
-                        // Awaiting Feedback (primary right swipe action)
-                        updateInterviewOutcome(interview, InterviewOutcome.AWAITING_RESPONSE)
-                        Snackbar.make(recyclerView, "Status: Awaiting Feedback", Snackbar.LENGTH_SHORT).show()
+                        // Check if it was a full swipe (> 60% of width) or partial
+                        val isFullSwipe = lastSwipeDistance > itemWidth * 0.6f
+                        if (isFullSwipe) {
+                            // Full swipe - Awaiting Feedback
+                            updateInterviewOutcome(interview, InterviewOutcome.AWAITING_RESPONSE)
+                            Snackbar.make(recyclerView, "Status: Awaiting Feedback", Snackbar.LENGTH_SHORT).show()
+                        } else {
+                            // Partial swipe - Next Stage
+                            launchNextStage(interview)
+                        }
                     }
                     ItemTouchHelper.LEFT -> {
                         // Rejected
@@ -178,6 +193,7 @@ class MainActivity : AppCompatActivity() {
                         Snackbar.make(recyclerView, "Status: Rejected", Snackbar.LENGTH_SHORT).show()
                     }
                 }
+                lastSwipeDistance = 0f
             }
 
             override fun onChildDraw(
@@ -192,10 +208,25 @@ class MainActivity : AppCompatActivity() {
                 val itemView = viewHolder.itemView
                 val paint = Paint()
                 val cornerRadius = 8f * resources.displayMetrics.density
+                val itemWidth = itemView.width
+
+                // Track swipe distance for determining action
+                if (isCurrentlyActive && dX > 0) {
+                    lastSwipeDistance = dX
+                }
 
                 if (dX > 0) {
-                    // Swiping right - Awaiting Feedback (yellow/purple)
-                    paint.color = ContextCompat.getColor(this@MainActivity, R.color.outcome_awaiting)
+                    // Swiping right - determine which action based on distance
+                    val isFullSwipe = dX > itemWidth * 0.6f
+
+                    if (isFullSwipe) {
+                        // Full swipe - Awaiting Feedback (yellow/purple)
+                        paint.color = ContextCompat.getColor(this@MainActivity, R.color.outcome_awaiting)
+                    } else {
+                        // Partial swipe - Next Stage (green/passed color)
+                        paint.color = ContextCompat.getColor(this@MainActivity, R.color.outcome_passed)
+                    }
+
                     val background = RectF(
                         itemView.left.toFloat(),
                         itemView.top.toFloat(),
@@ -204,8 +235,12 @@ class MainActivity : AppCompatActivity() {
                     )
                     c.drawRoundRect(background, cornerRadius, cornerRadius, paint)
 
-                    // Draw icon and text
-                    val icon = ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_schedule)
+                    // Draw icon and text based on action
+                    val icon = if (isFullSwipe) {
+                        ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_schedule)
+                    } else {
+                        ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_arrow_forward)
+                    }
                     icon?.let {
                         val iconMargin = 16 * resources.displayMetrics.density
                         val iconSize = 24 * resources.displayMetrics.density
@@ -216,20 +251,20 @@ class MainActivity : AppCompatActivity() {
                             (itemView.left + iconMargin + iconSize).toInt(),
                             (iconTop + iconSize).toInt()
                         )
-                        it.setTint(ContextCompat.getColor(this@MainActivity, R.color.black))
+                        it.setTint(ContextCompat.getColor(this@MainActivity, if (isFullSwipe) R.color.black else R.color.white))
                         it.draw(c)
                     }
 
                     // Draw text
                     val textPaint = Paint().apply {
-                        color = ContextCompat.getColor(this@MainActivity, R.color.black)
+                        color = ContextCompat.getColor(this@MainActivity, if (isFullSwipe) R.color.black else R.color.white)
                         textSize = 14 * resources.displayMetrics.density
                         isAntiAlias = true
                     }
-                    val text = "Awaiting"
+                    val text = if (isFullSwipe) "Awaiting" else "Next Stage"
                     val textX = itemView.left + 56 * resources.displayMetrics.density
                     val textY = itemView.top + itemView.height / 2 + textPaint.textSize / 3
-                    if (dX > 120 * resources.displayMetrics.density) {
+                    if (dX > 100 * resources.displayMetrics.density) {
                         c.drawText(text, textX, textY, textPaint)
                     }
 
@@ -288,6 +323,22 @@ class MainActivity : AppCompatActivity() {
             allInterviews[index] = allInterviews[index].copy(outcome = newOutcome)
             filterInterviews()
         }
+    }
+
+    private fun launchNextStage(interview: Interview) {
+        val intent = Intent(this, AddInterviewActivity::class.java).apply {
+            putExtra(AddInterviewActivity.EXTRA_NEXT_STAGE_MODE, true)
+            putExtra(AddInterviewActivity.EXTRA_COMPANY_NAME, interview.companyName)
+            putExtra(AddInterviewActivity.EXTRA_CLIENT_COMPANY, interview.clientCompany)
+            putExtra(AddInterviewActivity.EXTRA_JOB_TITLE, interview.jobTitle)
+            selectedDate?.let {
+                putExtra(AddInterviewActivity.EXTRA_SELECTED_DATE, it.toString())
+            }
+            putStringArrayListExtra(AddInterviewActivity.EXTRA_COMPANIES, ArrayList(allCompanies))
+        }
+        addInterviewLauncher.launch(intent)
+        // Refresh the list to reset the swiped item
+        filterInterviews()
     }
 
     private fun setupFab() {
