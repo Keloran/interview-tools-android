@@ -143,7 +143,9 @@ class MainActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         adapter = InterviewAdapter(
             onItemClick = { interview ->
-                // Interview click - will be implemented later
+                val intent = Intent(this, InterviewDetailActivity::class.java)
+                intent.putExtra(InterviewDetailActivity.EXTRA_INTERVIEW_ID, interview.id)
+                startActivity(intent)
             },
             onAwaitingClick = { interview ->
                 updateInterviewOutcome(interview, InterviewOutcome.AWAITING_RESPONSE)

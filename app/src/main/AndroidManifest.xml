@@ -32,6 +32,16 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <activity
+            android:name=".InterviewDetailActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".EditInterviewActivity"
+            android:exported="false"
+            android:parentActivityName=".InterviewDetailActivity" />
+
     </application>
 
 </manifest>
