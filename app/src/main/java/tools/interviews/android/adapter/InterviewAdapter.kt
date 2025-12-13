@@ -119,8 +119,16 @@ class InterviewAdapter(
             val visibleLeftButtons = listOf(buttonAwaiting, buttonNextStage).count { it.visibility == View.VISIBLE }
             val currentLeftActionsWidth = visibleLeftButtons * 72 * itemView.resources.displayMetrics.density
 
+            // Full swipe right triggers the first visible button on the left
+            // If Awaiting is visible, it's first; otherwise Next Stage is first
+            val fullSwipeRightAction: () -> Unit = if (buttonAwaiting.visibility == View.VISIBLE) {
+                { onAwaitingClick(interview) }
+            } else {
+                { onNextStageClick(interview) }
+            }
+
             // Setup touch handling for swipe
-            setupTouchHandling(interview, currentLeftActionsWidth, !isRejected)
+            setupTouchHandling(interview, currentLeftActionsWidth, !isRejected, fullSwipeRightAction)
 
             // Action button clicks
             buttonAwaiting.setOnClickListener {
@@ -148,7 +156,12 @@ class InterviewAdapter(
             }
         }
 
-        private fun setupTouchHandling(interview: Interview, currentLeftWidth: Float, canSwipeLeft: Boolean) {
+        private fun setupTouchHandling(
+            interview: Interview,
+            currentLeftWidth: Float,
+            canSwipeLeft: Boolean,
+            fullSwipeRightAction: () -> Unit
+        ) {
             cardContent.setOnTouchListener { view, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
@@ -202,10 +215,10 @@ class InterviewAdapter(
                             val translation = cardContent.translationX
 
                             when {
-                                // Full swipe right - trigger Awaiting Response
+                                // Full swipe right - trigger default action (Awaiting or Next Stage)
                                 isFullSwipeRight -> {
                                     animateOffScreen(true) {
-                                        onAwaitingClick(interview)
+                                        fullSwipeRightAction()
                                     }
                                 }
                                 // Full swipe left - trigger Rejected
