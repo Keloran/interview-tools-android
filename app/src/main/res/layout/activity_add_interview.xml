@@ -74,16 +74,17 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layoutCompanyName"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Company Name">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <AutoCompleteTextView
                     android:id="@+id/editCompanyName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textCapWords" />
+                    android:inputType="textCapWords"
+                    android:completionThreshold="1" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -119,101 +120,110 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Interview Details Section -->
-            <TextView
-                android:id="@+id/textInterviewDetailsHeader"
+            <!-- Interview Details Section (hidden for Applied stage) -->
+            <LinearLayout
+                android:id="@+id/sectionInterviewDetails"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Interview Details"
-                android:textAppearance="?attr/textAppearanceLabelMedium"
-                android:textColor="?attr/colorPrimary"
-                android:paddingTop="24dp"
-                android:paddingBottom="8dp" />
+                android:orientation="vertical"
+                android:visibility="gone">
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layoutInterviewDate"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Interview Date"
-                app:startIconDrawable="@drawable/ic_calendar_empty">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editInterviewDate"
+                <TextView
+                    android:id="@+id/textInterviewDetailsHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="none"
-                    android:focusable="false"
-                    android:clickable="true" />
+                    android:text="Interview Details"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:textColor="?attr/colorPrimary"
+                    android:paddingTop="24dp"
+                    android:paddingBottom="8dp" />
 
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layoutInterviewTime"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="Interview Time"
-                app:startIconDrawable="@drawable/ic_schedule">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editInterviewTime"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutInterviewDate"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="none"
-                    android:focusable="false"
-                    android:clickable="true" />
+                    android:hint="Interview Date"
+                    app:startIconDrawable="@drawable/ic_calendar_empty">
 
-            </com.google.android.material.textfield.TextInputLayout>
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editInterviewDate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:focusable="false"
+                        android:clickable="true" />
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layoutMethod"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="Interview Method">
+                </com.google.android.material.textfield.TextInputLayout>
 
-                <AutoCompleteTextView
-                    android:id="@+id/dropdownMethod"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutInterviewTime"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="none" />
+                    android:layout_marginTop="12dp"
+                    android:hint="Interview Time"
+                    app:startIconDrawable="@drawable/ic_schedule">
 
-            </com.google.android.material.textfield.TextInputLayout>
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editInterviewTime"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:focusable="false"
+                        android:clickable="true" />
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layoutInterviewer"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="Interviewer (Optional)">
+                </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editInterviewer"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutMethod"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPersonName" />
+                    android:layout_marginTop="12dp"
+                    android:hint="Interview Method">
 
-            </com.google.android.material.textfield.TextInputLayout>
+                    <AutoCompleteTextView
+                        android:id="@+id/dropdownMethod"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layoutMeetingLink"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="Meeting Link (Optional)">
+                </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editMeetingLink"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutInterviewer"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textUri" />
+                    android:layout_marginTop="12dp"
+                    android:hint="Interviewer (Optional)">
 
-            </com.google.android.material.textfield.TextInputLayout>
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editInterviewer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPersonName" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutMeetingLink"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="Meeting Link (Optional)">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editMeetingLink"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
 
             <!-- Notes Section -->
             <TextView

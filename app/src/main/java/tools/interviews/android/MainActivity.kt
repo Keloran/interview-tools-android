@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: InterviewAdapter
 
     private val allInterviews = mutableListOf<Interview>()
+    private val allCompanies = mutableSetOf<String>()
     private var selectedDate: LocalDate? = null
 
     private val dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
@@ -51,6 +52,11 @@ class MainActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode == RESULT_OK) {
             result.data?.let { data ->
+                // Handle new company
+                data.getStringExtra(AddInterviewActivity.EXTRA_NEW_COMPANY)?.let { newCompany ->
+                    allCompanies.add(newCompany)
+                }
+
                 val interview = parseInterviewFromIntent(data)
                 interview?.let {
                     allInterviews.add(it)
@@ -71,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         setupSwipeActions()
         setupFab()
-        loadSampleData()
+        loadData()
     }
 
     private fun setupViews() {
@@ -267,6 +273,10 @@ class MainActivity : AppCompatActivity() {
             selectedDate?.let {
                 intent.putExtra(AddInterviewActivity.EXTRA_SELECTED_DATE, it.toString())
             }
+            intent.putStringArrayListExtra(
+                AddInterviewActivity.EXTRA_COMPANIES,
+                ArrayList(allCompanies)
+            )
             addInterviewLauncher.launch(intent)
         }
     }
@@ -340,59 +350,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadSampleData() {
-        allInterviews.addAll(listOf(
-            Interview(
-                id = 1,
-                jobTitle = "Senior Android Developer",
-                companyName = "Acme Corp",
-                clientCompany = "TechRecruit",
-                stage = InterviewStage.FIRST_STAGE,
-                method = InterviewMethod.VIDEO_CALL,
-                outcome = InterviewOutcome.SCHEDULED,
-                applicationDate = LocalDate.now().minusDays(7),
-                interviewDate = LocalDateTime.now().plusDays(2).withHour(10).withMinute(0),
-                interviewer = "John Smith"
-            ),
-            Interview(
-                id = 2,
-                jobTitle = "Android Engineer",
-                companyName = "Tech Solutions",
-                stage = InterviewStage.PHONE_SCREEN,
-                method = InterviewMethod.PHONE_CALL,
-                outcome = InterviewOutcome.SCHEDULED,
-                applicationDate = LocalDate.now().minusDays(5),
-                interviewDate = LocalDateTime.now().plusDays(1).withHour(14).withMinute(30)
-            ),
-            Interview(
-                id = 3,
-                jobTitle = "Mobile Developer",
-                companyName = "StartupXYZ",
-                stage = InterviewStage.TECHNICAL_TEST,
-                outcome = InterviewOutcome.AWAITING_RESPONSE,
-                applicationDate = LocalDate.now().minusDays(10),
-                deadline = LocalDateTime.now().plusDays(5).withHour(23).withMinute(59),
-                notes = "Take-home coding challenge"
-            ),
-            Interview(
-                id = 4,
-                jobTitle = "Lead Android Developer",
-                companyName = "BigTech Inc",
-                stage = InterviewStage.SECOND_STAGE,
-                method = InterviewMethod.IN_PERSON,
-                outcome = InterviewOutcome.PASSED,
-                applicationDate = LocalDate.now().minusDays(14),
-                interviewDate = LocalDateTime.now().minusDays(3).withHour(11).withMinute(0)
-            ),
-            Interview(
-                id = 5,
-                jobTitle = "Software Engineer",
-                companyName = "Remote Co",
-                stage = InterviewStage.OFFER,
-                outcome = InterviewOutcome.OFFER_RECEIVED,
-                applicationDate = LocalDate.now().minusDays(21)
-            )
-        ))
+    private fun loadData() {
+        // Data will be loaded from local storage/server later
         filterInterviews()
     }
 }
