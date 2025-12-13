@@ -5,9 +5,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.CalendarView
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.CalendarView
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -15,13 +15,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import tools.interviews.android.adapter.InterviewAdapter
+import tools.interviews.android.data.InterviewRepository
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewMethod
 import tools.interviews.android.model.InterviewOutcome
@@ -45,8 +49,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: InterviewAdapter
     private lateinit var companySearchAdapter: ArrayAdapter<String>
 
-    private val allInterviews = mutableListOf<Interview>()
-    private val allCompanies = mutableSetOf<String>()
+    private lateinit var repository: InterviewRepository
+    private var allInterviews = listOf<Interview>()
+    private var allCompanies = listOf<String>()
     private var selectedDate: LocalDate? = null
     private var companyFilter: String? = null
 
@@ -57,17 +62,12 @@ class MainActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode == RESULT_OK) {
             result.data?.let { data ->
-                // Handle new company
-                data.getStringExtra(AddInterviewActivity.EXTRA_NEW_COMPANY)?.let { newCompany ->
-                    allCompanies.add(newCompany)
-                    updateCompanySearchAdapter()
-                }
-
                 val interview = parseInterviewFromIntent(data)
                 interview?.let {
-                    allInterviews.add(it)
-                    filterInterviews()
-                    Snackbar.make(recyclerView, "Interview added", Snackbar.LENGTH_SHORT).show()
+                    lifecycleScope.launch {
+                        repository.insert(it)
+                        Snackbar.make(recyclerView, "Interview added", Snackbar.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -77,13 +77,15 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        repository = (application as InterviewApplication).repository
+
         setupViews()
         setupToolbar()
         setupCalendar()
         setupRecyclerView()
         setupFab()
         setupSearch()
-        loadData()
+        observeData()
     }
 
     private fun setupViews() {
@@ -169,10 +171,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateInterviewOutcome(interview: Interview, newOutcome: InterviewOutcome) {
-        val index = allInterviews.indexOfFirst { it.id == interview.id }
-        if (index != -1) {
-            allInterviews[index] = allInterviews[index].copy(outcome = newOutcome)
-            filterInterviews()
+        lifecycleScope.launch {
+            val updatedInterview = interview.copy(outcome = newOutcome)
+            repository.update(updatedInterview)
         }
     }
 
@@ -188,8 +189,6 @@ class MainActivity : AppCompatActivity() {
             putStringArrayListExtra(AddInterviewActivity.EXTRA_COMPANIES, ArrayList(allCompanies))
         }
         addInterviewLauncher.launch(intent)
-        // Refresh the list to reset the swiped item
-        filterInterviews()
     }
 
     private fun setupFab() {
@@ -211,7 +210,7 @@ class MainActivity : AppCompatActivity() {
         companySearchAdapter = ArrayAdapter(
             this,
             android.R.layout.simple_dropdown_item_1line,
-            allCompanies.toMutableList()
+            mutableListOf<String>()
         )
         editSearchCompany.setAdapter(companySearchAdapter)
 
@@ -244,6 +243,24 @@ class MainActivity : AppCompatActivity() {
         // Clear search button
         buttonClearSearch.setOnClickListener {
             clearCompanyFilter()
+        }
+    }
+
+    private fun observeData() {
+        // Observe interviews from database
+        lifecycleScope.launch {
+            repository.allInterviews.collectLatest { interviews ->
+                allInterviews = interviews
+                filterInterviews()
+            }
+        }
+
+        // Observe companies from database
+        lifecycleScope.launch {
+            repository.allCompanies.collectLatest { companies ->
+                allCompanies = companies
+                updateCompanySearchAdapter()
+            }
         }
     }
 
@@ -366,7 +383,7 @@ class MainActivity : AppCompatActivity() {
     private fun parseInterviewFromIntent(data: Intent): Interview? {
         return try {
             Interview(
-                id = data.getLongExtra(AddInterviewActivity.EXTRA_INTERVIEW, System.currentTimeMillis()),
+                id = 0, // Let Room auto-generate the ID
                 jobTitle = data.getStringExtra("jobTitle") ?: return null,
                 companyName = data.getStringExtra("companyName") ?: return null,
                 clientCompany = data.getStringExtra("clientCompany"),
@@ -383,10 +400,5 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             null
         }
-    }
-
-    private fun loadData() {
-        // Data will be loaded from local storage/server later
-        filterInterviews()
     }
 }

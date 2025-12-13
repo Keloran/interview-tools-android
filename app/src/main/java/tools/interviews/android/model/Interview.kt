@@ -1,10 +1,14 @@
 package tools.interviews.android.model
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+@Entity(tableName = "interviews")
 data class Interview(
-    val id: Long,
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
     val jobTitle: String,
     val companyName: String,
     val clientCompany: String? = null,
