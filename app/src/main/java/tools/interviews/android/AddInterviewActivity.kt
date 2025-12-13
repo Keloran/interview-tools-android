@@ -36,12 +36,17 @@ class AddInterviewActivity : AppCompatActivity() {
     private lateinit var dropdownMethod: AutoCompleteTextView
     private lateinit var editInterviewer: TextInputEditText
     private lateinit var editMeetingLink: TextInputEditText
+    private lateinit var sectionDeadline: LinearLayout
+    private lateinit var editDeadline: TextInputEditText
+    private lateinit var editTestLink: TextInputEditText
     private lateinit var editNotes: TextInputEditText
 
     private var selectedStage: InterviewStage = InterviewStage.APPLIED
     private var selectedMethod: InterviewMethod? = null
     private var selectedDate: LocalDate? = null
     private var selectedTime: LocalTime? = null
+    private var selectedDeadline: LocalDate? = null
+    private var initialDate: LocalDate? = null  // Store the date passed from calendar
     private var existingCompanies = mutableListOf<String>()
 
     private val dateFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")
@@ -81,6 +86,9 @@ class AddInterviewActivity : AppCompatActivity() {
         dropdownMethod = findViewById(R.id.dropdownMethod)
         editInterviewer = findViewById(R.id.editInterviewer)
         editMeetingLink = findViewById(R.id.editMeetingLink)
+        sectionDeadline = findViewById(R.id.sectionDeadline)
+        editDeadline = findViewById(R.id.editDeadline)
+        editTestLink = findViewById(R.id.editTestLink)
         editNotes = findViewById(R.id.editNotes)
     }
 
@@ -102,8 +110,8 @@ class AddInterviewActivity : AppCompatActivity() {
 
         // Pre-fill date if passed from main activity
         intent.getStringExtra(EXTRA_SELECTED_DATE)?.let { dateString ->
-            selectedDate = LocalDate.parse(dateString)
-            editInterviewDate.setText(selectedDate?.format(dateFormatter))
+            initialDate = LocalDate.parse(dateString)
+            selectedDate = initialDate
         }
     }
 
@@ -140,13 +148,37 @@ class AddInterviewActivity : AppCompatActivity() {
     }
 
     private fun updateInterviewDetailsVisibility() {
-        // Hide interview details for Applied and Offer stages
-        val showDetails = selectedStage != InterviewStage.APPLIED &&
-                         selectedStage != InterviewStage.OFFER
-        sectionInterviewDetails.isVisible = showDetails
+        val isTechnicalTest = selectedStage == InterviewStage.TECHNICAL_TEST
+        val isAppliedOrOffer = selectedStage == InterviewStage.APPLIED ||
+                              selectedStage == InterviewStage.OFFER
 
-        // Clear interview details if hiding
-        if (!showDetails) {
+        // Show interview details for normal interview stages (not Applied, Offer, or Technical Test)
+        val showInterviewDetails = !isAppliedOrOffer && !isTechnicalTest
+        sectionInterviewDetails.isVisible = showInterviewDetails
+
+        // Show deadline section only for Technical Test
+        sectionDeadline.isVisible = isTechnicalTest
+
+        if (showInterviewDetails) {
+            // Restore initial date if available and date field is empty
+            if (selectedDate == null && initialDate != null) {
+                selectedDate = initialDate
+            }
+            selectedDate?.let {
+                editInterviewDate.setText(it.format(dateFormatter))
+            }
+        } else if (isTechnicalTest) {
+            // For Technical Test, restore deadline if available
+            if (selectedDeadline == null && initialDate != null) {
+                selectedDeadline = initialDate
+            }
+            selectedDeadline?.let {
+                editDeadline.setText(it.format(dateFormatter))
+            }
+        }
+
+        if (!showInterviewDetails) {
+            // Clear interview details if hiding
             selectedDate = null
             selectedTime = null
             selectedMethod = null
@@ -155,6 +187,13 @@ class AddInterviewActivity : AppCompatActivity() {
             dropdownMethod.text?.clear()
             editInterviewer.text?.clear()
             editMeetingLink.text?.clear()
+        }
+
+        if (!isTechnicalTest) {
+            // Clear deadline details if not Technical Test
+            selectedDeadline = null
+            editDeadline.text?.clear()
+            editTestLink.text?.clear()
         }
     }
 
@@ -165,6 +204,10 @@ class AddInterviewActivity : AppCompatActivity() {
 
         editInterviewTime.setOnClickListener {
             showTimePicker()
+        }
+
+        editDeadline.setOnClickListener {
+            showDeadlinePicker()
         }
     }
 
@@ -200,6 +243,24 @@ class AddInterviewActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun showDeadlinePicker() {
+        val initial = selectedDeadline ?: LocalDate.now().plusDays(7)
+        val dialog = DatePickerDialog(
+            this,
+            { _, year, month, dayOfMonth ->
+                selectedDeadline = LocalDate.of(year, month + 1, dayOfMonth)
+                editDeadline.setText(selectedDeadline?.format(dateFormatter))
+                validateForm()
+            },
+            initial.year,
+            initial.monthValue - 1,
+            initial.dayOfMonth
+        )
+        // Set minimum date to today (deadline must be in the future)
+        dialog.datePicker.minDate = System.currentTimeMillis()
+        dialog.show()
+    }
+
     private fun setupValidation() {
         editCompanyName.doAfterTextChanged { validateForm() }
         editJobTitle.doAfterTextChanged { validateForm() }
@@ -209,16 +270,23 @@ class AddInterviewActivity : AppCompatActivity() {
         val hasBasicInfo = editCompanyName.text?.isNotBlank() == true &&
                 editJobTitle.text?.isNotBlank() == true
 
-        val isValid = if (selectedStage == InterviewStage.APPLIED ||
-                        selectedStage == InterviewStage.OFFER) {
-            // For Applied/Offer, only need company and job title
-            hasBasicInfo
-        } else {
-            // For other stages, also need interview details
-            hasBasicInfo &&
-                selectedDate != null &&
-                selectedTime != null &&
-                selectedMethod != null
+        val isValid = when {
+            selectedStage == InterviewStage.APPLIED ||
+            selectedStage == InterviewStage.OFFER -> {
+                // For Applied/Offer, only need company and job title
+                hasBasicInfo
+            }
+            selectedStage == InterviewStage.TECHNICAL_TEST -> {
+                // For Technical Test, need company, job title, and deadline
+                hasBasicInfo && selectedDeadline != null
+            }
+            else -> {
+                // For other stages, need interview details
+                hasBasicInfo &&
+                    selectedDate != null &&
+                    selectedTime != null &&
+                    selectedMethod != null
+            }
         }
 
         buttonSave.isEnabled = isValid
@@ -227,9 +295,17 @@ class AddInterviewActivity : AppCompatActivity() {
     private fun saveInterview() {
         val companyName = editCompanyName.text.toString().trim()
         val isNewCompany = !existingCompanies.contains(companyName)
+        val isTechnicalTest = selectedStage == InterviewStage.TECHNICAL_TEST
 
         val interviewDate = if (selectedDate != null && selectedTime != null) {
             LocalDateTime.of(selectedDate, selectedTime)
+        } else {
+            null
+        }
+
+        // For Technical Test, deadline is stored at end of day
+        val deadline = if (isTechnicalTest && selectedDeadline != null) {
+            selectedDeadline!!.atTime(23, 59)
         } else {
             null
         }
@@ -239,6 +315,13 @@ class AddInterviewActivity : AppCompatActivity() {
             InterviewOutcome.AWAITING_RESPONSE
         } else {
             InterviewOutcome.SCHEDULED
+        }
+
+        // For Technical Test, use the test link; otherwise use meeting link
+        val link = if (isTechnicalTest) {
+            editTestLink.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+        } else {
+            editMeetingLink.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         }
 
         val interview = Interview(
@@ -251,8 +334,9 @@ class AddInterviewActivity : AppCompatActivity() {
             outcome = outcome,
             applicationDate = LocalDate.now(),
             interviewDate = interviewDate,
+            deadline = deadline,
             interviewer = editInterviewer.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
-            link = editMeetingLink.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
+            link = link,
             notes = editNotes.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         )
 
@@ -266,6 +350,7 @@ class AddInterviewActivity : AppCompatActivity() {
             putExtra("outcome", interview.outcome.name)
             putExtra("applicationDate", interview.applicationDate.toString())
             putExtra("interviewDate", interview.interviewDate?.toString())
+            putExtra("deadline", interview.deadline?.toString())
             putExtra("interviewer", interview.interviewer)
             putExtra("link", interview.link)
             putExtra("notes", interview.notes)

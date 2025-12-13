@@ -7,7 +7,9 @@ enum class InterviewStage(val displayName: String) {
     SECOND_STAGE("Second Stage"),
     THIRD_STAGE("Third Stage"),
     FOURTH_STAGE("Fourth Stage"),
-    FIFTH_STAGE("Fifth Stage"),
     TECHNICAL_TEST("Technical Test"),
+    TECHNICAL_INTERVIEW("Technical Interview"),
+    FINAL_STAGE("Final Stage"),
+    ONSITE("Onsite"),
     OFFER("Offer")
 }

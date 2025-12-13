@@ -57,9 +57,12 @@ class InterviewAdapter(
             }
             textCompanyName.text = companyText
 
-            // Interview date
-            textInterviewDate.text = interview.interviewDate?.format(dateTimeFormatter)
-                ?: "Applied ${interview.applicationDate.format(dateFormatter)}"
+            // Interview date or deadline
+            textInterviewDate.text = when {
+                interview.interviewDate != null -> interview.interviewDate.format(dateTimeFormatter)
+                interview.deadline != null -> "Deadline: ${interview.deadline.toLocalDate().format(dateFormatter)}"
+                else -> "Applied ${interview.applicationDate.format(dateFormatter)}"
+            }
 
             // Stage badge
             badgeStage.text = interview.stage.displayName

@@ -296,15 +296,21 @@ class MainActivity : AppCompatActivity() {
     private fun filterInterviews() {
         val filteredList = if (selectedDate != null) {
             allInterviews.filter { interview ->
-                interview.interviewDate?.toLocalDate() == selectedDate ||
-                    (interview.interviewDate == null && interview.applicationDate == selectedDate)
+                val relevantDate = interview.interviewDate?.toLocalDate()
+                    ?: interview.deadline?.toLocalDate()
+                    ?: interview.applicationDate
+                relevantDate == selectedDate
             }
         } else {
             val today = LocalDate.now()
             allInterviews.filter { interview ->
-                val interviewDate = interview.interviewDate?.toLocalDate() ?: interview.applicationDate
-                !interviewDate.isBefore(today)
-            }.sortedBy { it.interviewDate ?: it.applicationDate.atStartOfDay() }
+                val relevantDate = interview.interviewDate?.toLocalDate()
+                    ?: interview.deadline?.toLocalDate()
+                    ?: interview.applicationDate
+                !relevantDate.isBefore(today)
+            }.sortedBy {
+                it.interviewDate ?: it.deadline ?: it.applicationDate.atStartOfDay()
+            }
         }
 
         adapter.submitList(filteredList.toList())
@@ -341,6 +347,7 @@ class MainActivity : AppCompatActivity() {
                 outcome = InterviewOutcome.valueOf(data.getStringExtra("outcome") ?: "SCHEDULED"),
                 applicationDate = LocalDate.parse(data.getStringExtra("applicationDate")),
                 interviewDate = data.getStringExtra("interviewDate")?.let { LocalDateTime.parse(it) },
+                deadline = data.getStringExtra("deadline")?.let { LocalDateTime.parse(it) },
                 interviewer = data.getStringExtra("interviewer"),
                 link = data.getStringExtra("link"),
                 notes = data.getStringExtra("notes")

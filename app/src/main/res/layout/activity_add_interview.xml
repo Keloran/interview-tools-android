@@ -225,6 +225,59 @@
 
             </LinearLayout>
 
+            <!-- Technical Test Deadline Section (shown only for Technical Test stage) -->
+            <LinearLayout
+                android:id="@+id/sectionDeadline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Technical Test Details"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:textColor="?attr/colorPrimary"
+                    android:paddingTop="24dp"
+                    android:paddingBottom="8dp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutDeadline"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Deadline"
+                    app:startIconDrawable="@drawable/ic_calendar_empty">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editDeadline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:focusable="false"
+                        android:clickable="true" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutTestLink"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="Test Link (Optional)">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editTestLink"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+
             <!-- Notes Section -->
             <TextView
                 android:layout_width="match_parent"
