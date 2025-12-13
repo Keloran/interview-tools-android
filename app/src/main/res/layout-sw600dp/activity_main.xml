@@ -10,7 +10,9 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:focusable="true"
+        android:focusableInTouchMode="true">
 
         <!-- Toolbar -->
         <com.google.android.material.appbar.MaterialToolbar
@@ -20,15 +22,74 @@
             app:title="Interview Planner"
             app:navigationIconTint="?attr/colorOnSurface">
 
-            <ImageButton
-                android:id="@+id/buttonSettings"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_gravity="end"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Settings"
-                android:src="@drawable/ic_settings"
-                app:tint="?attr/colorOnSurface" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Search Input in Toolbar for Large Screens -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/searchBarContainer"
+                    android:layout_width="280dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="8dp"
+                    app:cardElevation="0dp"
+                    app:cardCornerRadius="20dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="12dp">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_search"
+                            android:importantForAccessibility="no"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <EditText
+                            android:id="@+id/editSearchCompany"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:background="@android:color/transparent"
+                            android:hint="Search companies..."
+                            android:inputType="text"
+                            android:imeOptions="actionSearch"
+                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                        <ImageButton
+                            android:id="@+id/buttonClearSearch"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Clear search"
+                            android:src="@drawable/ic_close"
+                            android:visibility="gone"
+                            app:tint="?attr/colorOnSurfaceVariant"
+                            tools:visibility="visible" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <ImageButton
+                    android:id="@+id/buttonSettings"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Settings"
+                    android:src="@drawable/ic_settings"
+                    app:tint="?attr/colorOnSurface" />
+
+            </LinearLayout>
 
         </com.google.android.material.appbar.MaterialToolbar>
 

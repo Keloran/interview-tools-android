@@ -1,11 +1,15 @@
 package tools.interviews.android
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.os.Bundle
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.CalendarView
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -13,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -39,11 +44,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyState: LinearLayout
     private lateinit var fabAddInterview: FloatingActionButton
+    private lateinit var editSearchCompany: EditText
+    private lateinit var buttonClearSearch: ImageButton
     private lateinit var adapter: InterviewAdapter
 
     private val allInterviews = mutableListOf<Interview>()
     private val allCompanies = mutableSetOf<String>()
     private var selectedDate: LocalDate? = null
+    private var companyFilter: String? = null
 
     private val dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
 
@@ -77,6 +85,7 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         setupSwipeActions()
         setupFab()
+        setupSearch()
         loadData()
     }
 
@@ -89,6 +98,8 @@ class MainActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.recyclerViewInterviews)
         emptyState = findViewById(R.id.emptyState)
         fabAddInterview = findViewById(R.id.fabAddInterview)
+        editSearchCompany = findViewById(R.id.editSearchCompany)
+        buttonClearSearch = findViewById(R.id.buttonClearSearch)
     }
 
     private fun setupToolbar() {
@@ -100,6 +111,11 @@ class MainActivity : AppCompatActivity() {
     private fun setupCalendar() {
         calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
             val newDate = LocalDate.of(year, month + 1, dayOfMonth)
+            // Clear company filter when selecting a date
+            if (companyFilter != null) {
+                companyFilter = null
+                editSearchCompany.text?.clear()
+            }
             if (selectedDate == newDate) {
                 clearDateSelection()
             } else {
@@ -110,7 +126,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonClearDate.setOnClickListener {
-            clearDateSelection()
+            if (companyFilter != null) {
+                clearCompanyFilter()
+            } else {
+                clearDateSelection()
+            }
         }
     }
 
@@ -281,35 +301,110 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupSearch() {
+        // Handle text changes to show/hide clear button
+        editSearchCompany.doAfterTextChanged { text ->
+            buttonClearSearch.isVisible = !text.isNullOrEmpty()
+        }
+
+        // Handle search action (keyboard search button)
+        editSearchCompany.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                val query = editSearchCompany.text.toString().trim()
+                if (query.isNotEmpty()) {
+                    setCompanyFilter(query)
+                }
+                true
+            } else {
+                false
+            }
+        }
+
+        // Clear search button
+        buttonClearSearch.setOnClickListener {
+            clearCompanyFilter()
+        }
+    }
+
+    private fun setCompanyFilter(query: String) {
+        companyFilter = query
+        // Clear date filter when searching for company
+        selectedDate = null
+        calendarView.date = System.currentTimeMillis()
+        // Hide keyboard
+        hideKeyboard()
+        updateListHeader()
+        filterInterviews()
+    }
+
+    private fun hideKeyboard() {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(editSearchCompany.windowToken, 0)
+        editSearchCompany.clearFocus()
+    }
+
+    private fun clearCompanyFilter() {
+        companyFilter = null
+        editSearchCompany.text?.clear()
+        editSearchCompany.clearFocus()
+        updateListHeader()
+        filterInterviews()
+    }
+
     private fun updateListHeader() {
-        if (selectedDate != null) {
-            textListHeader.text = "Interviews on ${selectedDate!!.format(dateFormatter)}"
-            buttonClearDate.isVisible = true
-            fabAddInterview.show()
-        } else {
-            textListHeader.text = "Upcoming Interviews"
-            buttonClearDate.isVisible = false
-            fabAddInterview.hide()
+        when {
+            companyFilter != null -> {
+                textListHeader.text = "Interviews at \"$companyFilter\""
+                buttonClearDate.isVisible = true
+                buttonClearDate.text = "Clear Filter"
+                fabAddInterview.hide()
+            }
+            selectedDate != null -> {
+                textListHeader.text = "Interviews on ${selectedDate!!.format(dateFormatter)}"
+                buttonClearDate.isVisible = true
+                buttonClearDate.text = "Clear"
+                fabAddInterview.show()
+            }
+            else -> {
+                textListHeader.text = "Upcoming Interviews"
+                buttonClearDate.isVisible = false
+                buttonClearDate.text = "Clear"
+                fabAddInterview.hide()
+            }
         }
     }
 
     private fun filterInterviews() {
-        val filteredList = if (selectedDate != null) {
-            allInterviews.filter { interview ->
-                val relevantDate = interview.interviewDate?.toLocalDate()
-                    ?: interview.deadline?.toLocalDate()
-                    ?: interview.applicationDate
-                relevantDate == selectedDate
+        val filteredList = when {
+            // Company filter - show ALL interviews with matching company (past and future)
+            companyFilter != null -> {
+                allInterviews.filter { interview ->
+                    interview.companyName.contains(companyFilter!!, ignoreCase = true) ||
+                        interview.clientCompany?.contains(companyFilter!!, ignoreCase = true) == true
+                }.sortedByDescending {
+                    it.interviewDate ?: it.deadline ?: it.applicationDate.atStartOfDay()
+                }
             }
-        } else {
-            val today = LocalDate.now()
-            allInterviews.filter { interview ->
-                val relevantDate = interview.interviewDate?.toLocalDate()
-                    ?: interview.deadline?.toLocalDate()
-                    ?: interview.applicationDate
-                !relevantDate.isBefore(today)
-            }.sortedBy {
-                it.interviewDate ?: it.deadline ?: it.applicationDate.atStartOfDay()
+            // Date filter
+            selectedDate != null -> {
+                allInterviews.filter { interview ->
+                    val relevantDate = interview.interviewDate?.toLocalDate()
+                        ?: interview.deadline?.toLocalDate()
+                        ?: interview.applicationDate
+                    relevantDate == selectedDate
+                }
+            }
+            // Default - upcoming interviews only
+            else -> {
+                val today = LocalDate.now()
+                allInterviews.filter { interview ->
+                    val relevantDate = interview.interviewDate?.toLocalDate()
+                        ?: interview.deadline?.toLocalDate()
+                        ?: interview.applicationDate
+                    !relevantDate.isBefore(today)
+                }.sortedBy {
+                    it.interviewDate ?: it.deadline ?: it.applicationDate.atStartOfDay()
+                }
             }
         }
 
@@ -325,12 +420,19 @@ class MainActivity : AppCompatActivity() {
             val emptyTitle = findViewById<TextView>(R.id.textEmptyTitle)
             val emptyDescription = findViewById<TextView>(R.id.textEmptyDescription)
 
-            if (selectedDate != null) {
-                emptyTitle.text = "No Interviews This Day"
-                emptyDescription.text = "Tap + to add an interview for this date"
-            } else {
-                emptyTitle.text = "No Upcoming Interviews"
-                emptyDescription.text = "Select a date to add an interview"
+            when {
+                companyFilter != null -> {
+                    emptyTitle.text = "No Interviews Found"
+                    emptyDescription.text = "No interviews with \"$companyFilter\""
+                }
+                selectedDate != null -> {
+                    emptyTitle.text = "No Interviews This Day"
+                    emptyDescription.text = "Tap + to add an interview for this date"
+                }
+                else -> {
+                    emptyTitle.text = "No Upcoming Interviews"
+                    emptyDescription.text = "Select a date to add an interview"
+                }
             }
         }
     }
