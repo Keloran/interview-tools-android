@@ -2,9 +2,6 @@ package tools.interviews.android
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.RectF
 import android.os.Bundle
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -16,10 +13,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
@@ -86,7 +81,6 @@ class MainActivity : AppCompatActivity() {
         setupToolbar()
         setupCalendar()
         setupRecyclerView()
-        setupSwipeActions()
         setupFab()
         setupSearch()
         loadData()
@@ -145,176 +139,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        adapter = InterviewAdapter { interview ->
-            // Interview click - will be implemented later
-        }
+        adapter = InterviewAdapter(
+            onItemClick = { interview ->
+                // Interview click - will be implemented later
+            },
+            onAwaitingClick = { interview ->
+                updateInterviewOutcome(interview, InterviewOutcome.AWAITING_RESPONSE)
+                Snackbar.make(recyclerView, "Status: Awaiting Feedback", Snackbar.LENGTH_SHORT).show()
+            },
+            onNextStageClick = { interview ->
+                launchNextStage(interview)
+            },
+            onRejectClick = { interview ->
+                updateInterviewOutcome(interview, InterviewOutcome.REJECTED)
+                Snackbar.make(recyclerView, "Status: Rejected", Snackbar.LENGTH_SHORT).show()
+            }
+        )
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
-    }
 
-    private var lastSwipeDistance = 0f
-
-    private fun setupSwipeActions() {
-        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
-            0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
-        ) {
-            override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean = false
-
-            override fun getSwipeThreshold(viewHolder: RecyclerView.ViewHolder): Float {
-                // Lower threshold to allow partial swipes
-                return 0.3f
-            }
-
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                val position = viewHolder.adapterPosition
-                val interview = adapter.currentList[position]
-                val itemWidth = viewHolder.itemView.width
-
-                when (direction) {
-                    ItemTouchHelper.RIGHT -> {
-                        // Check if it was a full swipe (> 60% of width) or partial
-                        val isFullSwipe = lastSwipeDistance > itemWidth * 0.6f
-                        if (isFullSwipe) {
-                            // Full swipe - Awaiting Feedback
-                            updateInterviewOutcome(interview, InterviewOutcome.AWAITING_RESPONSE)
-                            Snackbar.make(recyclerView, "Status: Awaiting Feedback", Snackbar.LENGTH_SHORT).show()
-                        } else {
-                            // Partial swipe - Next Stage
-                            launchNextStage(interview)
-                        }
-                    }
-                    ItemTouchHelper.LEFT -> {
-                        // Rejected
-                        updateInterviewOutcome(interview, InterviewOutcome.REJECTED)
-                        Snackbar.make(recyclerView, "Status: Rejected", Snackbar.LENGTH_SHORT).show()
-                    }
+        // Close any open swipe when scrolling
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    adapter.closeAllItems()
                 }
-                lastSwipeDistance = 0f
-            }
-
-            override fun onChildDraw(
-                c: Canvas,
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                dX: Float,
-                dY: Float,
-                actionState: Int,
-                isCurrentlyActive: Boolean
-            ) {
-                val itemView = viewHolder.itemView
-                val paint = Paint()
-                val cornerRadius = 8f * resources.displayMetrics.density
-                val itemWidth = itemView.width
-
-                // Track swipe distance for determining action
-                if (isCurrentlyActive && dX > 0) {
-                    lastSwipeDistance = dX
-                }
-
-                if (dX > 0) {
-                    // Swiping right - determine which action based on distance
-                    val isFullSwipe = dX > itemWidth * 0.6f
-
-                    if (isFullSwipe) {
-                        // Full swipe - Awaiting Feedback (yellow/purple)
-                        paint.color = ContextCompat.getColor(this@MainActivity, R.color.outcome_awaiting)
-                    } else {
-                        // Partial swipe - Next Stage (green/passed color)
-                        paint.color = ContextCompat.getColor(this@MainActivity, R.color.outcome_passed)
-                    }
-
-                    val background = RectF(
-                        itemView.left.toFloat(),
-                        itemView.top.toFloat(),
-                        itemView.left + dX,
-                        itemView.bottom.toFloat()
-                    )
-                    c.drawRoundRect(background, cornerRadius, cornerRadius, paint)
-
-                    // Draw icon and text based on action
-                    val icon = if (isFullSwipe) {
-                        ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_schedule)
-                    } else {
-                        ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_arrow_forward)
-                    }
-                    icon?.let {
-                        val iconMargin = 16 * resources.displayMetrics.density
-                        val iconSize = 24 * resources.displayMetrics.density
-                        val iconTop = itemView.top + (itemView.height - iconSize) / 2
-                        it.setBounds(
-                            (itemView.left + iconMargin).toInt(),
-                            iconTop.toInt(),
-                            (itemView.left + iconMargin + iconSize).toInt(),
-                            (iconTop + iconSize).toInt()
-                        )
-                        it.setTint(ContextCompat.getColor(this@MainActivity, if (isFullSwipe) R.color.black else R.color.white))
-                        it.draw(c)
-                    }
-
-                    // Draw text
-                    val textPaint = Paint().apply {
-                        color = ContextCompat.getColor(this@MainActivity, if (isFullSwipe) R.color.black else R.color.white)
-                        textSize = 14 * resources.displayMetrics.density
-                        isAntiAlias = true
-                    }
-                    val text = if (isFullSwipe) "Awaiting" else "Next Stage"
-                    val textX = itemView.left + 56 * resources.displayMetrics.density
-                    val textY = itemView.top + itemView.height / 2 + textPaint.textSize / 3
-                    if (dX > 100 * resources.displayMetrics.density) {
-                        c.drawText(text, textX, textY, textPaint)
-                    }
-
-                } else if (dX < 0) {
-                    // Swiping left - Rejected (red)
-                    paint.color = ContextCompat.getColor(this@MainActivity, R.color.outcome_rejected)
-                    val background = RectF(
-                        itemView.right + dX,
-                        itemView.top.toFloat(),
-                        itemView.right.toFloat(),
-                        itemView.bottom.toFloat()
-                    )
-                    c.drawRoundRect(background, cornerRadius, cornerRadius, paint)
-
-                    // Draw icon
-                    val icon = ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_close)
-                    icon?.let {
-                        val iconMargin = 16 * resources.displayMetrics.density
-                        val iconSize = 24 * resources.displayMetrics.density
-                        val iconTop = itemView.top + (itemView.height - iconSize) / 2
-                        it.setBounds(
-                            (itemView.right - iconMargin - iconSize).toInt(),
-                            iconTop.toInt(),
-                            (itemView.right - iconMargin).toInt(),
-                            (iconTop + iconSize).toInt()
-                        )
-                        it.setTint(ContextCompat.getColor(this@MainActivity, R.color.white))
-                        it.draw(c)
-                    }
-
-                    // Draw text
-                    val textPaint = Paint().apply {
-                        color = ContextCompat.getColor(this@MainActivity, R.color.white)
-                        textSize = 14 * resources.displayMetrics.density
-                        isAntiAlias = true
-                    }
-                    val text = "Rejected"
-                    val textWidth = textPaint.measureText(text)
-                    val textX = itemView.right - 56 * resources.displayMetrics.density - textWidth
-                    val textY = itemView.top + itemView.height / 2 + textPaint.textSize / 3
-                    if (-dX > 120 * resources.displayMetrics.density) {
-                        c.drawText(text, textX, textY, textPaint)
-                    }
-                }
-
-                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
             }
         })
-
-        itemTouchHelper.attachToRecyclerView(recyclerView)
     }
 
     private fun updateInterviewOutcome(interview: Interview, newOutcome: InterviewOutcome) {

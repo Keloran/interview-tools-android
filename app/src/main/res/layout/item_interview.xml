@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -7,98 +7,207 @@
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="16dp"
     android:layout_marginVertical="6dp"
-    app:cardElevation="0dp"
-    app:cardCornerRadius="8dp"
-    app:strokeWidth="1dp"
-    app:strokeColor="?attr/colorOutline">
+    android:clipChildren="false">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <!-- Left Action Buttons (revealed when swiping right) -->
+    <LinearLayout
+        android:id="@+id/leftActions"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start|center_vertical"
+        android:orientation="horizontal"
+        android:visibility="visible">
+
+        <LinearLayout
+            android:id="@+id/buttonAwaiting"
+            android:layout_width="72dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@color/outcome_awaiting"
+            android:paddingVertical="8dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_schedule"
+                android:importantForAccessibility="no"
+                app:tint="@color/black" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Awaiting"
+                android:textSize="10sp"
+                android:textColor="@color/black" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/buttonNextStage"
+            android:layout_width="72dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@color/outcome_passed"
+            android:paddingVertical="8dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_arrow_forward"
+                android:importantForAccessibility="no"
+                app:tint="@color/white" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Next Stage"
+                android:textSize="10sp"
+                android:textColor="@color/white" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Right Action Button (revealed when swiping left) -->
+    <LinearLayout
+        android:id="@+id/rightActions"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="end|center_vertical"
+        android:orientation="horizontal"
+        android:visibility="visible">
+
+        <LinearLayout
+            android:id="@+id/buttonReject"
+            android:layout_width="72dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@color/outcome_rejected"
+            android:paddingVertical="8dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_close"
+                android:importantForAccessibility="no"
+                app:tint="@color/white" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Reject"
+                android:textSize="10sp"
+                android:textColor="@color/white" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Main Card Content (slides to reveal actions) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardContent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp">
+        app:cardElevation="2dp"
+        app:cardCornerRadius="8dp"
+        app:strokeWidth="0dp"
+        app:cardBackgroundColor="?attr/colorSurface">
 
-        <!-- Outcome Indicator Circle -->
-        <View
-            android:id="@+id/outcomeIndicator"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:layout_marginTop="4dp"
-            android:background="@drawable/circle_indicator"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
-
-        <!-- Job Title -->
-        <TextView
-            android:id="@+id/textJobTitle"
-            android:layout_width="0dp"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:textStyle="bold"
-            android:textColor="?attr/colorOnSurface"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toEndOf="@id/outcomeIndicator"
-            app:layout_constraintEnd_toEndOf="parent"
-            tools:text="Senior Android Developer" />
+            android:padding="12dp">
 
-        <!-- Company Name -->
-        <TextView
-            android:id="@+id/textCompanyName"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            app:layout_constraintTop_toBottomOf="@id/textJobTitle"
-            app:layout_constraintStart_toStartOf="@id/textJobTitle"
-            app:layout_constraintEnd_toEndOf="parent"
-            tools:text="Acme Corp (via TechRecruit)" />
+            <!-- Outcome Indicator Circle -->
+            <View
+                android:id="@+id/outcomeIndicator"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/circle_indicator"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
 
-        <!-- Interview Date -->
-        <TextView
-            android:id="@+id/textInterviewDate"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            app:layout_constraintTop_toBottomOf="@id/textCompanyName"
-            app:layout_constraintStart_toStartOf="@id/textJobTitle"
-            app:layout_constraintEnd_toEndOf="parent"
-            tools:text="Dec 15, 2025 at 10:00 AM" />
+            <!-- Job Title -->
+            <TextView
+                android:id="@+id/textJobTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toEndOf="@id/outcomeIndicator"
+                app:layout_constraintEnd_toEndOf="parent"
+                tools:text="Senior Android Developer" />
 
-        <!-- Stage Badge -->
-        <TextView
-            android:id="@+id/badgeStage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
-            android:background="@drawable/badge_stage_background"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            app:layout_constraintTop_toBottomOf="@id/textInterviewDate"
-            app:layout_constraintStart_toStartOf="@id/textJobTitle"
-            tools:text="First Stage" />
+            <!-- Company Name -->
+            <TextView
+                android:id="@+id/textCompanyName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                app:layout_constraintTop_toBottomOf="@id/textJobTitle"
+                app:layout_constraintStart_toStartOf="@id/textJobTitle"
+                app:layout_constraintEnd_toEndOf="parent"
+                tools:text="Acme Corp (via TechRecruit)" />
 
-        <!-- Method Badge -->
-        <TextView
-            android:id="@+id/badgeMethod"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
-            android:background="@drawable/badge_method_background"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="@color/purple_700"
-            android:visibility="gone"
-            app:layout_constraintTop_toTopOf="@id/badgeStage"
-            app:layout_constraintStart_toEndOf="@id/badgeStage"
-            tools:text="Video Call"
-            tools:visibility="visible" />
+            <!-- Interview Date -->
+            <TextView
+                android:id="@+id/textInterviewDate"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                app:layout_constraintTop_toBottomOf="@id/textCompanyName"
+                app:layout_constraintStart_toStartOf="@id/textJobTitle"
+                app:layout_constraintEnd_toEndOf="parent"
+                tools:text="Dec 15, 2025 at 10:00 AM" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <!-- Stage Badge -->
+            <TextView
+                android:id="@+id/badgeStage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:background="@drawable/badge_stage_background"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                app:layout_constraintTop_toBottomOf="@id/textInterviewDate"
+                app:layout_constraintStart_toStartOf="@id/textJobTitle"
+                tools:text="First Stage" />
 
-</com.google.android.material.card.MaterialCardView>
+            <!-- Method Badge -->
+            <TextView
+                android:id="@+id/badgeMethod"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:background="@drawable/badge_method_background"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="@color/purple_700"
+                android:visibility="gone"
+                app:layout_constraintTop_toTopOf="@id/badgeStage"
+                app:layout_constraintStart_toEndOf="@id/badgeStage"
+                tools:text="Video Call"
+                tools:visibility="visible" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</FrameLayout>
