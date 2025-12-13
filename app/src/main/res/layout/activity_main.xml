@@ -160,7 +160,7 @@
                 android:importantForAccessibility="no"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
-            <EditText
+            <AutoCompleteTextView
                 android:id="@+id/editSearchCompany"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
@@ -170,6 +170,8 @@
                 android:hint="Search companies..."
                 android:inputType="text"
                 android:imeOptions="actionSearch"
+                android:completionThreshold="1"
+                android:dropDownAnchor="@id/searchBarContainer"
                 android:textAppearance="?attr/textAppearanceBodyLarge" />
 
             <ImageButton

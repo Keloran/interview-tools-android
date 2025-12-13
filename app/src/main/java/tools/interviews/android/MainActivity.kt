@@ -9,7 +9,8 @@ import android.os.Bundle
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.CalendarView
-import android.widget.EditText
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -44,9 +45,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyState: LinearLayout
     private lateinit var fabAddInterview: FloatingActionButton
-    private lateinit var editSearchCompany: EditText
+    private lateinit var editSearchCompany: AutoCompleteTextView
     private lateinit var buttonClearSearch: ImageButton
     private lateinit var adapter: InterviewAdapter
+    private lateinit var companySearchAdapter: ArrayAdapter<String>
 
     private val allInterviews = mutableListOf<Interview>()
     private val allCompanies = mutableSetOf<String>()
@@ -63,6 +65,7 @@ class MainActivity : AppCompatActivity() {
                 // Handle new company
                 data.getStringExtra(AddInterviewActivity.EXTRA_NEW_COMPANY)?.let { newCompany ->
                     allCompanies.add(newCompany)
+                    updateCompanySearchAdapter()
                 }
 
                 val interview = parseInterviewFromIntent(data)
@@ -302,9 +305,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSearch() {
+        // Set up autocomplete adapter
+        companySearchAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_dropdown_item_1line,
+            allCompanies.toMutableList()
+        )
+        editSearchCompany.setAdapter(companySearchAdapter)
+
         // Handle text changes to show/hide clear button
         editSearchCompany.doAfterTextChanged { text ->
             buttonClearSearch.isVisible = !text.isNullOrEmpty()
+        }
+
+        // Handle item selection from autocomplete dropdown
+        editSearchCompany.setOnItemClickListener { _, _, position, _ ->
+            val selectedCompany = companySearchAdapter.getItem(position)
+            if (selectedCompany != null) {
+                setCompanyFilter(selectedCompany)
+            }
         }
 
         // Handle search action (keyboard search button)
@@ -324,6 +343,11 @@ class MainActivity : AppCompatActivity() {
         buttonClearSearch.setOnClickListener {
             clearCompanyFilter()
         }
+    }
+
+    private fun updateCompanySearchAdapter() {
+        companySearchAdapter.clear()
+        companySearchAdapter.addAll(allCompanies.sorted())
     }
 
     private fun setCompanyFilter(query: String) {
