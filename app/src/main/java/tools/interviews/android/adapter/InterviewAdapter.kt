@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import tools.interviews.android.R
 import tools.interviews.android.model.Interview
+import tools.interviews.android.model.InterviewOutcome
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 
@@ -63,9 +64,10 @@ class InterviewAdapter(
         private var startX = 0f
         private var startTranslationX = 0f
         private var isDragging = false
+        private var swipeDistance = 0f // Track actual finger movement
         private val leftActionsWidth = 144 * itemView.resources.displayMetrics.density // 72dp * 2
         private val rightActionsWidth = 72 * itemView.resources.displayMetrics.density
-        private val fullSwipeThreshold = itemView.resources.displayMetrics.widthPixels * 0.6f
+        private val fullSwipeThreshold = itemView.resources.displayMetrics.widthPixels * 0.4f // 40% of screen
 
         fun bind(interview: Interview) {
             // Set outcome indicator color
@@ -104,8 +106,21 @@ class InterviewAdapter(
             // Reset card position
             cardContent.translationX = 0f
 
+            // Show/hide action buttons based on current outcome
+            val isRejected = interview.outcome == InterviewOutcome.REJECTED
+            val isAwaiting = interview.outcome == InterviewOutcome.AWAITING_RESPONSE
+
+            // If rejected, hide both Awaiting and Reject buttons
+            // If awaiting, hide Awaiting button
+            buttonAwaiting.visibility = if (isRejected || isAwaiting) View.GONE else View.VISIBLE
+            buttonReject.visibility = if (isRejected) View.GONE else View.VISIBLE
+
+            // Recalculate left actions width based on visible buttons
+            val visibleLeftButtons = listOf(buttonAwaiting, buttonNextStage).count { it.visibility == View.VISIBLE }
+            val currentLeftActionsWidth = visibleLeftButtons * 72 * itemView.resources.displayMetrics.density
+
             // Setup touch handling for swipe
-            setupTouchHandling(interview)
+            setupTouchHandling(interview, currentLeftActionsWidth, !isRejected)
 
             // Action button clicks
             buttonAwaiting.setOnClickListener {
@@ -133,13 +148,14 @@ class InterviewAdapter(
             }
         }
 
-        private fun setupTouchHandling(interview: Interview) {
+        private fun setupTouchHandling(interview: Interview, currentLeftWidth: Float, canSwipeLeft: Boolean) {
             cardContent.setOnTouchListener { view, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         startX = event.rawX
                         startTranslationX = cardContent.translationX
                         isDragging = false
+                        swipeDistance = 0f
                         // Close any other open item
                         if (currentlyOpenViewHolder != this && currentlyOpenViewHolder != null) {
                             currentlyOpenViewHolder?.closeSwipe()
@@ -150,22 +166,26 @@ class InterviewAdapter(
                         val deltaX = event.rawX - startX
                         if (abs(deltaX) > 10) {
                             isDragging = true
+                            swipeDistance = deltaX // Track actual finger movement
                             view.parent.requestDisallowInterceptTouchEvent(true)
 
                             var newTranslation = startTranslationX + deltaX
                             val maxSwipe = itemView.width.toFloat()
 
-                            // Allow full swipe but with resistance after buttons are revealed
-                            if (newTranslation > leftActionsWidth) {
-                                val extra = newTranslation - leftActionsWidth
-                                newTranslation = leftActionsWidth + extra * 0.3f
-                            } else if (newTranslation < -rightActionsWidth) {
+                            // Allow full swipe with some resistance after buttons are revealed
+                            if (newTranslation > currentLeftWidth) {
+                                val extra = newTranslation - currentLeftWidth
+                                newTranslation = currentLeftWidth + extra * 0.5f
+                            } else if (newTranslation < -rightActionsWidth && canSwipeLeft) {
                                 val extra = -rightActionsWidth - newTranslation
-                                newTranslation = -rightActionsWidth - extra * 0.3f
+                                newTranslation = -rightActionsWidth - extra * 0.5f
+                            } else if (!canSwipeLeft && newTranslation < 0) {
+                                // Can't swipe left if rejected
+                                newTranslation = 0f
                             }
 
                             // Limit to screen width
-                            newTranslation = newTranslation.coerceIn(-maxSwipe * 0.8f, maxSwipe * 0.8f)
+                            newTranslation = newTranslation.coerceIn(-maxSwipe * 0.9f, maxSwipe * 0.9f)
 
                             cardContent.translationX = newTranslation
                             true
@@ -176,27 +196,31 @@ class InterviewAdapter(
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         view.parent.requestDisallowInterceptTouchEvent(false)
                         if (isDragging) {
+                            // Use actual swipe distance for full swipe detection
+                            val isFullSwipeRight = swipeDistance > fullSwipeThreshold
+                            val isFullSwipeLeft = swipeDistance < -fullSwipeThreshold && canSwipeLeft
                             val translation = cardContent.translationX
+
                             when {
                                 // Full swipe right - trigger Awaiting Response
-                                translation > fullSwipeThreshold -> {
+                                isFullSwipeRight -> {
                                     animateOffScreen(true) {
                                         onAwaitingClick(interview)
                                     }
                                 }
                                 // Full swipe left - trigger Rejected
-                                translation < -fullSwipeThreshold -> {
+                                isFullSwipeLeft -> {
                                     animateOffScreen(false) {
                                         onRejectClick(interview)
                                     }
                                 }
                                 // Partial swipe right - reveal buttons
-                                translation > leftActionsWidth / 3 -> {
-                                    animateToPosition(leftActionsWidth)
+                                translation > currentLeftWidth / 3 -> {
+                                    animateToPosition(currentLeftWidth)
                                     currentlyOpenViewHolder = this
                                 }
                                 // Partial swipe left - reveal button
-                                translation < -rightActionsWidth / 3 -> {
+                                translation < -rightActionsWidth / 3 && canSwipeLeft -> {
                                     animateToPosition(-rightActionsWidth)
                                     currentlyOpenViewHolder = this
                                 }
