@@ -42,6 +42,9 @@ class InterviewDetailActivity : AppCompatActivity() {
     private lateinit var labelLink: TextView
     private lateinit var cardLink: MaterialCardView
     private lateinit var textLink: TextView
+    private lateinit var labelJobListing: TextView
+    private lateinit var cardJobListing: MaterialCardView
+    private lateinit var textJobListing: TextView
     private lateinit var labelNotes: TextView
     private lateinit var cardNotes: MaterialCardView
     private lateinit var textNotes: TextView
@@ -103,6 +106,9 @@ class InterviewDetailActivity : AppCompatActivity() {
         labelLink = findViewById(R.id.labelLink)
         cardLink = findViewById(R.id.cardLink)
         textLink = findViewById(R.id.textLink)
+        labelJobListing = findViewById(R.id.labelJobListing)
+        cardJobListing = findViewById(R.id.cardJobListing)
+        textJobListing = findViewById(R.id.textJobListing)
         labelNotes = findViewById(R.id.labelNotes)
         cardNotes = findViewById(R.id.cardNotes)
         textNotes = findViewById(R.id.textNotes)
@@ -205,6 +211,21 @@ class InterviewDetailActivity : AppCompatActivity() {
         } else {
             labelLink.isVisible = false
             cardLink.isVisible = false
+        }
+
+        // Job Listing
+        if (interview.jobListing != null) {
+            labelJobListing.isVisible = true
+            cardJobListing.isVisible = true
+            textJobListing.text = interview.jobListing
+
+            // Make job listing link clickable
+            cardJobListing.setOnClickListener {
+                openLink(interview.jobListing)
+            }
+        } else {
+            labelJobListing.isVisible = false
+            cardJobListing.isVisible = false
         }
 
         // Notes

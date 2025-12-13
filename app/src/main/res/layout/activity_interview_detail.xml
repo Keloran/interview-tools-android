@@ -335,6 +335,56 @@
 
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Job Listing Section -->
+            <TextView
+                android:id="@+id/labelJobListing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Job Listing"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="?attr/colorPrimary"
+                android:visibility="gone" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardJobListing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:cardElevation="1dp"
+                app:cardCornerRadius="8dp"
+                app:strokeWidth="0dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_open_in_new"
+                        android:importantForAccessibility="no"
+                        app:tint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:id="@+id/textJobListing"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:textColor="@color/purple_700"
+                        android:autoLink="web"
+                        tools:text="https://example.com/jobs/123" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Notes Section -->
             <TextView
                 android:id="@+id/labelNotes"

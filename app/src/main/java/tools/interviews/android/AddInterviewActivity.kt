@@ -30,6 +30,7 @@ class AddInterviewActivity : AppCompatActivity() {
     private lateinit var editCompanyName: AutoCompleteTextView
     private lateinit var editClientCompany: TextInputEditText
     private lateinit var editJobTitle: TextInputEditText
+    private lateinit var editJobListing: TextInputEditText
     private lateinit var sectionInterviewDetails: LinearLayout
     private lateinit var editInterviewDate: TextInputEditText
     private lateinit var editInterviewTime: TextInputEditText
@@ -85,6 +86,7 @@ class AddInterviewActivity : AppCompatActivity() {
         editCompanyName = findViewById(R.id.editCompanyName)
         editClientCompany = findViewById(R.id.editClientCompany)
         editJobTitle = findViewById(R.id.editJobTitle)
+        editJobListing = findViewById(R.id.editJobListing)
         sectionInterviewDetails = findViewById(R.id.sectionInterviewDetails)
         editInterviewDate = findViewById(R.id.editInterviewDate)
         editInterviewTime = findViewById(R.id.editInterviewTime)
@@ -355,6 +357,8 @@ class AddInterviewActivity : AppCompatActivity() {
             editMeetingLink.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         }
 
+        val jobListing = editJobListing.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+
         val interview = Interview(
             id = System.currentTimeMillis(),
             jobTitle = editJobTitle.text.toString().trim(),
@@ -368,6 +372,7 @@ class AddInterviewActivity : AppCompatActivity() {
             deadline = deadline,
             interviewer = editInterviewer.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             link = link,
+            jobListing = jobListing,
             notes = editNotes.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         )
 
@@ -384,6 +389,7 @@ class AddInterviewActivity : AppCompatActivity() {
             putExtra("deadline", interview.deadline?.toString())
             putExtra("interviewer", interview.interviewer)
             putExtra("link", interview.link)
+            putExtra("jobListing", interview.jobListing)
             putExtra("notes", interview.notes)
             if (isNewCompany) {
                 putExtra(EXTRA_NEW_COMPANY, companyName)

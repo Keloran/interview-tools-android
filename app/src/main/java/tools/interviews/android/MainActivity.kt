@@ -397,6 +397,7 @@ class MainActivity : AppCompatActivity() {
                 deadline = data.getStringExtra("deadline")?.let { LocalDateTime.parse(it) },
                 interviewer = data.getStringExtra("interviewer"),
                 link = data.getStringExtra("link"),
+                jobListing = data.getStringExtra("jobListing"),
                 notes = data.getStringExtra("notes")
             )
         } catch (e: Exception) {

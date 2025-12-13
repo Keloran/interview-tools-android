@@ -33,6 +33,7 @@ class EditInterviewActivity : AppCompatActivity() {
     private lateinit var editCompanyName: AutoCompleteTextView
     private lateinit var editClientCompany: TextInputEditText
     private lateinit var editJobTitle: TextInputEditText
+    private lateinit var editJobListing: TextInputEditText
     private lateinit var sectionInterviewDetails: LinearLayout
     private lateinit var editInterviewDate: TextInputEditText
     private lateinit var editInterviewTime: TextInputEditText
@@ -88,6 +89,7 @@ class EditInterviewActivity : AppCompatActivity() {
         editCompanyName = findViewById(R.id.editCompanyName)
         editClientCompany = findViewById(R.id.editClientCompany)
         editJobTitle = findViewById(R.id.editJobTitle)
+        editJobListing = findViewById(R.id.editJobListing)
         sectionInterviewDetails = findViewById(R.id.sectionInterviewDetails)
         editInterviewDate = findViewById(R.id.editInterviewDate)
         editInterviewTime = findViewById(R.id.editInterviewTime)
@@ -139,6 +141,7 @@ class EditInterviewActivity : AppCompatActivity() {
         editCompanyName.setText(interview.companyName)
         editClientCompany.setText(interview.clientCompany ?: "")
         editJobTitle.setText(interview.jobTitle)
+        editJobListing.setText(interview.jobListing ?: "")
 
         interview.interviewDate?.let {
             selectedDate = it.toLocalDate()
@@ -342,6 +345,8 @@ class EditInterviewActivity : AppCompatActivity() {
             editMeetingLink.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         }
 
+        val jobListing = editJobListing.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+
         val updatedInterview = Interview(
             id = interviewId,
             jobTitle = editJobTitle.text.toString().trim(),
@@ -355,6 +360,7 @@ class EditInterviewActivity : AppCompatActivity() {
             deadline = deadline,
             interviewer = editInterviewer.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             link = link,
+            jobListing = jobListing,
             notes = editNotes.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         )
 
