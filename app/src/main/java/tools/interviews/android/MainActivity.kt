@@ -1,5 +1,6 @@
 package tools.interviews.android
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.CalendarView
 import android.widget.ImageButton
@@ -65,7 +66,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupToolbar() {
         buttonSettings.setOnClickListener {
-            // Settings will be implemented later
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
     }
 
