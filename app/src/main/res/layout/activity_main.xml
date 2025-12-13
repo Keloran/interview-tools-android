@@ -39,7 +39,7 @@
             android:id="@+id/calendarView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxDate="12/31/2030" />
+            android:firstDayOfWeek="2" />
 
         <!-- Divider -->
         <View

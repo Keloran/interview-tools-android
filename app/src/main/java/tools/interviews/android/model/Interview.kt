@@ -21,5 +21,6 @@ data class Interview(
     val interviewer: String? = null,
     val link: String? = null,
     val jobListing: String? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    val metadataJSON: String? = null
 )

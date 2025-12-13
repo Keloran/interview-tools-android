@@ -230,7 +230,7 @@ class InterviewDetailActivity : AppCompatActivity() {
             InterviewOutcome.OFFER_ACCEPTED -> getColor(R.color.outcome_offer_accepted)
             InterviewOutcome.OFFER_RECEIVED -> getColor(R.color.outcome_offer_received)
             InterviewOutcome.OFFER_DECLINED -> getColor(R.color.outcome_offer_declined)
-            InterviewOutcome.WITHDREW -> getColor(R.color.outcome_rejected)
+            InterviewOutcome.WITHDREW -> getColor(R.color.outcome_withdrew)
         }
     }
 

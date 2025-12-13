@@ -8,9 +8,9 @@ enum class InterviewOutcome(
     @ColorRes val colorRes: Int
 ) {
     SCHEDULED("Scheduled", R.color.outcome_scheduled),
+    AWAITING_RESPONSE("Awaiting Response", R.color.outcome_awaiting),
     PASSED("Passed", R.color.outcome_passed),
     REJECTED("Rejected", R.color.outcome_rejected),
-    AWAITING_RESPONSE("Awaiting Response", R.color.outcome_awaiting),
     OFFER_RECEIVED("Offer Received", R.color.outcome_offer_received),
     OFFER_ACCEPTED("Offer Accepted", R.color.outcome_offer_accepted),
     OFFER_DECLINED("Offer Declined", R.color.outcome_offer_declined),
