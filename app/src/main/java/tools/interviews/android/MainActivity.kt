@@ -185,6 +185,10 @@ class MainActivity : AppCompatActivity() {
             putExtra(AddInterviewActivity.EXTRA_COMPANY_NAME, interview.companyName)
             putExtra(AddInterviewActivity.EXTRA_CLIENT_COMPANY, interview.clientCompany)
             putExtra(AddInterviewActivity.EXTRA_JOB_TITLE, interview.jobTitle)
+            putExtra(AddInterviewActivity.EXTRA_JOB_LISTING, interview.jobListing)
+            putExtra(AddInterviewActivity.EXTRA_APPLICATION_DATE, interview.applicationDate.toString())
+            putExtra(AddInterviewActivity.EXTRA_NOTES, interview.notes)
+            putExtra(AddInterviewActivity.EXTRA_METADATA_JSON, interview.metadataJSON)
             selectedDate?.let {
                 putExtra(AddInterviewActivity.EXTRA_SELECTED_DATE, it.toString())
             }
@@ -398,7 +402,8 @@ class MainActivity : AppCompatActivity() {
                 interviewer = data.getStringExtra("interviewer"),
                 link = data.getStringExtra("link"),
                 jobListing = data.getStringExtra("jobListing"),
-                notes = data.getStringExtra("notes")
+                notes = data.getStringExtra("notes"),
+                metadataJSON = data.getStringExtra("metadataJSON")
             )
         } catch (e: Exception) {
             null

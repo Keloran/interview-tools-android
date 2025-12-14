@@ -13,6 +13,7 @@ import androidx.core.widget.doAfterTextChanged
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewMethod
 import tools.interviews.android.model.InterviewOutcome
@@ -36,6 +37,7 @@ class AddInterviewActivity : AppCompatActivity() {
     private lateinit var editInterviewTime: TextInputEditText
     private lateinit var dropdownMethod: AutoCompleteTextView
     private lateinit var editInterviewer: TextInputEditText
+    private lateinit var layoutMeetingLink: TextInputLayout
     private lateinit var editMeetingLink: TextInputEditText
     private lateinit var sectionDeadline: LinearLayout
     private lateinit var editDeadline: TextInputEditText
@@ -50,6 +52,8 @@ class AddInterviewActivity : AppCompatActivity() {
     private var initialDate: LocalDate? = null  // Store the date passed from calendar
     private var existingCompanies = mutableListOf<String>()
     private var isNextStageMode = false
+    private var originalApplicationDate: LocalDate? = null
+    private var originalMetadataJSON: String? = null
 
     private val dateFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")
     private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
@@ -63,6 +67,10 @@ class AddInterviewActivity : AppCompatActivity() {
         const val EXTRA_COMPANY_NAME = "company_name"
         const val EXTRA_CLIENT_COMPANY = "client_company"
         const val EXTRA_JOB_TITLE = "job_title"
+        const val EXTRA_JOB_LISTING = "job_listing"
+        const val EXTRA_APPLICATION_DATE = "application_date"
+        const val EXTRA_NOTES = "notes"
+        const val EXTRA_METADATA_JSON = "metadata_json"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,6 +100,7 @@ class AddInterviewActivity : AppCompatActivity() {
         editInterviewTime = findViewById(R.id.editInterviewTime)
         dropdownMethod = findViewById(R.id.dropdownMethod)
         editInterviewer = findViewById(R.id.editInterviewer)
+        layoutMeetingLink = findViewById(R.id.layoutMeetingLink)
         editMeetingLink = findViewById(R.id.editMeetingLink)
         sectionDeadline = findViewById(R.id.sectionDeadline)
         editDeadline = findViewById(R.id.editDeadline)
@@ -127,7 +136,7 @@ class AddInterviewActivity : AppCompatActivity() {
             // Update toolbar title
             toolbar.title = "Next Stage"
 
-            // Pre-fill company name and job title
+            // Pre-fill all metadata from previous interview
             intent.getStringExtra(EXTRA_COMPANY_NAME)?.let {
                 editCompanyName.setText(it)
             }
@@ -137,6 +146,16 @@ class AddInterviewActivity : AppCompatActivity() {
             intent.getStringExtra(EXTRA_JOB_TITLE)?.let {
                 editJobTitle.setText(it)
             }
+            intent.getStringExtra(EXTRA_JOB_LISTING)?.let {
+                editJobListing.setText(it)
+            }
+            intent.getStringExtra(EXTRA_NOTES)?.let {
+                editNotes.setText(it)
+            }
+            intent.getStringExtra(EXTRA_APPLICATION_DATE)?.let {
+                originalApplicationDate = LocalDate.parse(it)
+            }
+            originalMetadataJSON = intent.getStringExtra(EXTRA_METADATA_JSON)
 
             // Default to first stage that isn't Applied (Phone Screen)
             selectedStage = InterviewStage.PHONE_SCREEN
@@ -166,7 +185,17 @@ class AddInterviewActivity : AppCompatActivity() {
         dropdownMethod.setAdapter(methodAdapter)
         dropdownMethod.setOnItemClickListener { _, _, position, _ ->
             selectedMethod = InterviewMethod.entries[position]
+            updateMeetingLinkVisibility()
             validateForm()
+        }
+    }
+
+    private fun updateMeetingLinkVisibility() {
+        // Only show meeting link for Video Call
+        val showMeetingLink = selectedMethod == InterviewMethod.VIDEO_CALL
+        layoutMeetingLink.isVisible = showMeetingLink
+        if (!showMeetingLink) {
+            editMeetingLink.text?.clear()
         }
     }
 
@@ -359,6 +388,9 @@ class AddInterviewActivity : AppCompatActivity() {
 
         val jobListing = editJobListing.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
 
+        // Use original application date if in next stage mode, otherwise today
+        val applicationDate = originalApplicationDate ?: LocalDate.now()
+
         val interview = Interview(
             id = System.currentTimeMillis(),
             jobTitle = editJobTitle.text.toString().trim(),
@@ -367,13 +399,14 @@ class AddInterviewActivity : AppCompatActivity() {
             stage = selectedStage,
             method = selectedMethod,
             outcome = outcome,
-            applicationDate = LocalDate.now(),
+            applicationDate = applicationDate,
             interviewDate = interviewDate,
             deadline = deadline,
             interviewer = editInterviewer.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             link = link,
             jobListing = jobListing,
-            notes = editNotes.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+            notes = editNotes.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
+            metadataJSON = originalMetadataJSON
         )
 
         val resultIntent = Intent().apply {
@@ -391,6 +424,7 @@ class AddInterviewActivity : AppCompatActivity() {
             putExtra("link", interview.link)
             putExtra("jobListing", interview.jobListing)
             putExtra("notes", interview.notes)
+            putExtra("metadataJSON", interview.metadataJSON)
             if (isNewCompany) {
                 putExtra(EXTRA_NEW_COMPANY, companyName)
             }

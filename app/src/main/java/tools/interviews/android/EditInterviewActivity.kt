@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tools.interviews.android.data.InterviewRepository
@@ -39,6 +40,7 @@ class EditInterviewActivity : AppCompatActivity() {
     private lateinit var editInterviewTime: TextInputEditText
     private lateinit var dropdownMethod: AutoCompleteTextView
     private lateinit var editInterviewer: TextInputEditText
+    private lateinit var layoutMeetingLink: TextInputLayout
     private lateinit var editMeetingLink: TextInputEditText
     private lateinit var sectionDeadline: LinearLayout
     private lateinit var editDeadline: TextInputEditText
@@ -95,6 +97,7 @@ class EditInterviewActivity : AppCompatActivity() {
         editInterviewTime = findViewById(R.id.editInterviewTime)
         dropdownMethod = findViewById(R.id.dropdownMethod)
         editInterviewer = findViewById(R.id.editInterviewer)
+        layoutMeetingLink = findViewById(R.id.layoutMeetingLink)
         editMeetingLink = findViewById(R.id.editMeetingLink)
         sectionDeadline = findViewById(R.id.sectionDeadline)
         editDeadline = findViewById(R.id.editDeadline)
@@ -187,7 +190,19 @@ class EditInterviewActivity : AppCompatActivity() {
         }
         dropdownMethod.setOnItemClickListener { _, _, position, _ ->
             selectedMethod = InterviewMethod.entries[position]
+            updateMeetingLinkVisibility()
             validateForm()
+        }
+        // Set initial visibility based on loaded method
+        updateMeetingLinkVisibility()
+    }
+
+    private fun updateMeetingLinkVisibility() {
+        // Only show meeting link for Video Call
+        val showMeetingLink = selectedMethod == InterviewMethod.VIDEO_CALL
+        layoutMeetingLink.isVisible = showMeetingLink
+        if (!showMeetingLink) {
+            editMeetingLink.text?.clear()
         }
     }
 

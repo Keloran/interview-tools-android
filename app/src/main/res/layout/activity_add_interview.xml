@@ -230,7 +230,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="Meeting Link (Optional)">
+                    android:hint="Meeting Link (Optional)"
+                    android:visibility="gone">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/editMeetingLink"
