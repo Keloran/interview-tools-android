@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
 
@@ -30,11 +31,23 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
+    }
+    buildFeatures {
+        buildConfig = true
+        compose = true
+    }
+}
+
+configurations.all {
+    resolutionStrategy.dependencySubstitution {
+        substitute(module("com.clerk:clerk-android-telemetry"))
+            .using(module("com.clerk:clerk-android-telemetry-android:0.1.1"))
+            .because("Clerk SDK references wrong artifact name")
     }
 }
 
@@ -54,7 +67,20 @@ dependencies {
     // Lifecycle & Coroutines
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
+
+    // Compose
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.activity.compose)
+
+    // Clerk Authentication
+    implementation(libs.clerk.api)
+    implementation(libs.clerk.ui)
+    implementation(libs.clerk.telemetry)
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
