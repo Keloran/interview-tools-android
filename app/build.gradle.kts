@@ -43,13 +43,13 @@ android {
     }
 }
 
-configurations.all {
-    resolutionStrategy.dependencySubstitution {
-        substitute(module("com.clerk:clerk-android-telemetry"))
-            .using(module("com.clerk:clerk-android-telemetry-android:0.1.1"))
-            .because("Clerk SDK references wrong artifact name")
-    }
-}
+//configurations.all {
+//    resolutionStrategy.dependencySubstitution {
+//        substitute(module("com.clerk:clerk-android-telemetry"))
+//            .using(module("com.clerk:clerk-android-telemetry-android:0.1.1"))
+//            .because("Clerk SDK references wrong artifact name")
+//    }
+//}
 
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -79,8 +79,6 @@ dependencies {
     // Clerk Authentication
     implementation(libs.clerk.api)
     implementation(libs.clerk.ui)
-    implementation(libs.clerk.telemetry)
-
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

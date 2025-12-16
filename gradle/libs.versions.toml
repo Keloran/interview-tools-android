@@ -16,8 +16,8 @@ lifecycle = "2.8.7"
 coroutines = "1.8.1"
 composeBom = "2024.12.01"
 activityCompose = "1.9.3"
-clerkAPI = "0.1.26"
-clerkUI = "0.1.1"
+clerkAPI = "0.1.27"
+clerkUI = "0.1.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -42,7 +42,6 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 clerk-api = { group = "com.clerk", name = "clerk-android-api", version.ref = "clerkAPI" }
 clerk-ui = { group = "com.clerk", name = "clerk-android-ui", version.ref = "clerkUI" }
-clerk-telemetry = { group = "com.clerk", name = "clerk-android-telemetry-android", version.ref = "clerkUI" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
