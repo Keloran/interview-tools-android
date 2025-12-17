@@ -435,11 +435,16 @@ class AddInterviewActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                // Step 1: Save locally first
-                val localId = repository.insert(interview)
+                // Step 1: Find or create company locally
+                val localCompany = repository.findOrCreateCompany(companyName)
+                Log.d(TAG, "Company '${companyName}' has local id: ${localCompany.id}, serverId: ${localCompany.serverId}")
+
+                // Step 2: Create interview with companyId
+                val interviewWithCompany = interview.copy(companyId = localCompany.id)
+                val localId = repository.insert(interviewWithCompany)
                 Log.d(TAG, "Interview saved locally with id: $localId")
 
-                // Step 2: If user is signed in, push to server
+                // Step 3: If user is signed in, push to server
                 val user = Clerk.user
                 if (user != null) {
                     try {
@@ -450,13 +455,20 @@ class AddInterviewActivity : AppCompatActivity() {
                             APIService.getInstance().setAuthToken(token.jwt)
 
                             // Get the interview with local ID for pushing
-                            val savedInterview = interview.copy(id = localId)
+                            val savedInterview = interviewWithCompany.copy(id = localId)
 
                             // Push to server
                             val apiInterview = syncService.pushInterview(savedInterview)
                             Log.d(TAG, "Interview pushed to server with id: ${apiInterview.id}")
+                            Log.d(TAG, "Server returned company id: ${apiInterview.company.id}")
 
-                            // Step 3: Update local interview with server ID
+                            // Step 4: Update local company with server ID (if it didn't have one)
+                            if (localCompany.serverId == null) {
+                                repository.updateCompanyServerId(localCompany.id, apiInterview.company.id)
+                                Log.d(TAG, "Updated local company with server id: ${apiInterview.company.id}")
+                            }
+
+                            // Step 5: Update local interview with server ID
                             val updatedInterview = savedInterview.copy(serverId = apiInterview.id)
                             repository.update(updatedInterview)
                             Log.d(TAG, "Local interview updated with server id: ${apiInterview.id}")

@@ -235,6 +235,23 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val updatedInterview = interview.copy(outcome = newOutcome)
             repository.update(updatedInterview)
+
+            // If interview has been synced to server, update remotely too
+            if (interview.serverId != null) {
+                try {
+                    val session = Clerk.sessionFlow.value
+                    val token = session?.fetchToken()?.successOrNull()
+
+                    if (token != null) {
+                        APIService.getInstance().setAuthToken(token.jwt)
+                        syncService.updateRemoteInterview(interview.serverId, updatedInterview)
+                        Log.d(TAG, "Updated interview outcome on server: ${newOutcome.name}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to update outcome on server: ${e.message}", e)
+                    // Local update already succeeded, so don't show error to user
+                }
+            }
         }
     }
 

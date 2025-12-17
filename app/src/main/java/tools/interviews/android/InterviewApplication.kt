@@ -8,7 +8,7 @@ import tools.interviews.android.data.api.SyncService
 
 class InterviewApplication : Application() {
     val database by lazy { InterviewDatabase.getDatabase(this) }
-    val repository by lazy { InterviewRepository(database.interviewDao()) }
+    val repository by lazy { InterviewRepository(database.interviewDao(), database.companyDao()) }
     val syncService by lazy {
         SyncService(
             interviewDao = database.interviewDao(),

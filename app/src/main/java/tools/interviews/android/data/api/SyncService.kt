@@ -52,19 +52,26 @@ class SyncService(
             Log.d(TAG, "Starting sync...")
 
             // Step 1: Push local-only interviews to server first
+            Log.d(TAG, "Step 1: Pushing local interviews...")
             pushLocalInterviews()
+            Log.d(TAG, "Step 1 complete")
 
             // Step 2: Sync companies from server
+            Log.d(TAG, "Step 2: Syncing companies...")
             syncCompanies()
+            Log.d(TAG, "Step 2 complete")
 
             // Step 3: Pull remote interviews and update local database
+            Log.d(TAG, "Step 3: Pulling remote interviews...")
             pullRemoteInterviews()
+            Log.d(TAG, "Step 3 complete")
 
             _lastSyncDate.value = LocalDateTime.now()
             Log.d(TAG, "Sync completed successfully")
         } catch (e: Exception) {
             _syncError.value = e
             Log.e(TAG, "Sync error: ${e.message}", e)
+            e.printStackTrace()
         }
 
         _isSyncing.value = false
@@ -255,7 +262,7 @@ class SyncService(
 
     suspend fun updateRemoteInterview(id: Int, interview: Interview): APIInterview {
         val request = UpdateInterviewRequest(
-            outcome = interview.outcome.name.lowercase(),
+            outcome = interview.outcome.name,  // Server expects uppercase: REJECTED, AWAITING_RESPONSE, etc.
             stage = interview.stage.displayName,
             date = interview.interviewDate?.format(DateTimeFormatter.ISO_DATE_TIME),
             deadline = interview.deadline?.format(DateTimeFormatter.ISO_DATE_TIME),
