@@ -35,11 +35,8 @@ import tools.interviews.android.data.InterviewRepository
 import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
-import tools.interviews.android.model.InterviewMethod
 import tools.interviews.android.model.InterviewOutcome
-import tools.interviews.android.model.InterviewStage
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class MainActivity : AppCompatActivity() {
@@ -75,15 +72,8 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
-            result.data?.let { data ->
-                val interview = parseInterviewFromIntent(data)
-                interview?.let {
-                    lifecycleScope.launch {
-                        repository.insert(it)
-                        Snackbar.make(recyclerView, "Interview added", Snackbar.LENGTH_SHORT).show()
-                    }
-                }
-            }
+            // Interview is now saved directly in AddInterviewActivity
+            // The list will update automatically via Flow observation
         }
     }
 
@@ -455,27 +445,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun parseInterviewFromIntent(data: Intent): Interview? {
-        return try {
-            Interview(
-                id = 0, // Let Room auto-generate the ID
-                jobTitle = data.getStringExtra("jobTitle") ?: return null,
-                companyName = data.getStringExtra("companyName") ?: return null,
-                clientCompany = data.getStringExtra("clientCompany"),
-                stage = InterviewStage.valueOf(data.getStringExtra("stage") ?: "FIRST_STAGE"),
-                method = data.getStringExtra("method")?.let { InterviewMethod.valueOf(it) },
-                outcome = InterviewOutcome.valueOf(data.getStringExtra("outcome") ?: "SCHEDULED"),
-                applicationDate = LocalDate.parse(data.getStringExtra("applicationDate")),
-                interviewDate = data.getStringExtra("interviewDate")?.let { LocalDateTime.parse(it) },
-                deadline = data.getStringExtra("deadline")?.let { LocalDateTime.parse(it) },
-                interviewer = data.getStringExtra("interviewer"),
-                link = data.getStringExtra("link"),
-                jobListing = data.getStringExtra("jobListing"),
-                notes = data.getStringExtra("notes"),
-                metadataJSON = data.getStringExtra("metadataJSON")
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
 }

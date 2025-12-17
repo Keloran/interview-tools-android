@@ -4,16 +4,26 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
+import androidx.lifecycle.lifecycleScope
+import com.clerk.api.Clerk
+import com.clerk.api.network.serialization.successOrNull
+import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import kotlinx.coroutines.launch
+import tools.interviews.android.data.InterviewRepository
+import tools.interviews.android.data.api.APIService
+import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewMethod
 import tools.interviews.android.model.InterviewOutcome
@@ -24,6 +34,22 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 class AddInterviewActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "AddInterviewActivity"
+        const val EXTRA_SELECTED_DATE = "selected_date"
+        const val EXTRA_INTERVIEW = "interview"
+        const val EXTRA_COMPANIES = "companies"
+        const val EXTRA_NEW_COMPANY = "new_company"
+        const val EXTRA_NEXT_STAGE_MODE = "next_stage_mode"
+        const val EXTRA_COMPANY_NAME = "company_name"
+        const val EXTRA_CLIENT_COMPANY = "client_company"
+        const val EXTRA_JOB_TITLE = "job_title"
+        const val EXTRA_JOB_LISTING = "job_listing"
+        const val EXTRA_APPLICATION_DATE = "application_date"
+        const val EXTRA_NOTES = "notes"
+        const val EXTRA_METADATA_JSON = "metadata_json"
+    }
 
     private lateinit var toolbar: MaterialToolbar
     private lateinit var buttonSave: MaterialButton
@@ -58,24 +84,16 @@ class AddInterviewActivity : AppCompatActivity() {
     private val dateFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")
     private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
 
-    companion object {
-        const val EXTRA_SELECTED_DATE = "selected_date"
-        const val EXTRA_INTERVIEW = "interview"
-        const val EXTRA_COMPANIES = "companies"
-        const val EXTRA_NEW_COMPANY = "new_company"
-        const val EXTRA_NEXT_STAGE_MODE = "next_stage_mode"
-        const val EXTRA_COMPANY_NAME = "company_name"
-        const val EXTRA_CLIENT_COMPANY = "client_company"
-        const val EXTRA_JOB_TITLE = "job_title"
-        const val EXTRA_JOB_LISTING = "job_listing"
-        const val EXTRA_APPLICATION_DATE = "application_date"
-        const val EXTRA_NOTES = "notes"
-        const val EXTRA_METADATA_JSON = "metadata_json"
-    }
+    private lateinit var repository: InterviewRepository
+    private lateinit var syncService: SyncService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_interview)
+
+        val app = application as InterviewApplication
+        repository = app.repository
+        syncService = app.syncService
 
         setupViews()
         setupToolbar()
@@ -240,8 +258,7 @@ class AddInterviewActivity : AppCompatActivity() {
         }
 
         if (!showInterviewDetails) {
-            // Clear interview details if hiding
-            selectedDate = null
+            // Clear interview UI details if hiding, but preserve the date from calendar
             selectedTime = null
             selectedMethod = null
             editInterviewDate.text?.clear()
@@ -356,13 +373,14 @@ class AddInterviewActivity : AppCompatActivity() {
 
     private fun saveInterview() {
         val companyName = editCompanyName.text.toString().trim()
-        val isNewCompany = !existingCompanies.contains(companyName)
         val isTechnicalTest = selectedStage == InterviewStage.TECHNICAL_TEST
 
-        val interviewDate = if (selectedDate != null && selectedTime != null) {
-            LocalDateTime.of(selectedDate, selectedTime)
-        } else {
-            null
+        // Use calendar-selected date with time, or just date at 9am default
+        val dateToUse = selectedDate ?: initialDate
+        val interviewDate = when {
+            dateToUse != null && selectedTime != null -> LocalDateTime.of(dateToUse, selectedTime)
+            dateToUse != null -> dateToUse.atTime(9, 0) // Default to 9am if no time selected
+            else -> null
         }
 
         // For Technical Test, deadline is stored at end of day
@@ -388,11 +406,13 @@ class AddInterviewActivity : AppCompatActivity() {
 
         val jobListing = editJobListing.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
 
-        // Use original application date if in next stage mode, otherwise today
-        val applicationDate = originalApplicationDate ?: LocalDate.now()
+        // Use original application date if in next stage mode, selected date from calendar, or today
+        val applicationDate = originalApplicationDate ?: initialDate ?: LocalDate.now()
 
+        // Create interview with id = 0 to let Room auto-generate
         val interview = Interview(
-            id = System.currentTimeMillis(),
+            id = 0,
+            serverId = null, // Not synced yet
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = companyName,
             clientCompany = editClientCompany.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
@@ -409,28 +429,61 @@ class AddInterviewActivity : AppCompatActivity() {
             metadataJSON = originalMetadataJSON
         )
 
-        val resultIntent = Intent().apply {
-            putExtra(EXTRA_INTERVIEW, interview.id)
-            putExtra("jobTitle", interview.jobTitle)
-            putExtra("companyName", interview.companyName)
-            putExtra("clientCompany", interview.clientCompany)
-            putExtra("stage", interview.stage.name)
-            putExtra("method", interview.method?.name)
-            putExtra("outcome", interview.outcome.name)
-            putExtra("applicationDate", interview.applicationDate.toString())
-            putExtra("interviewDate", interview.interviewDate?.toString())
-            putExtra("deadline", interview.deadline?.toString())
-            putExtra("interviewer", interview.interviewer)
-            putExtra("link", interview.link)
-            putExtra("jobListing", interview.jobListing)
-            putExtra("notes", interview.notes)
-            putExtra("metadataJSON", interview.metadataJSON)
-            if (isNewCompany) {
-                putExtra(EXTRA_NEW_COMPANY, companyName)
+        // Disable save button and show saving state
+        buttonSave.isEnabled = false
+        buttonSave.text = "Saving..."
+
+        lifecycleScope.launch {
+            try {
+                // Step 1: Save locally first
+                val localId = repository.insert(interview)
+                Log.d(TAG, "Interview saved locally with id: $localId")
+
+                // Step 2: If user is signed in, push to server
+                val user = Clerk.user
+                if (user != null) {
+                    try {
+                        val session = Clerk.sessionFlow.value
+                        val token = session?.fetchToken()?.successOrNull()
+
+                        if (token != null) {
+                            APIService.getInstance().setAuthToken(token.jwt)
+
+                            // Get the interview with local ID for pushing
+                            val savedInterview = interview.copy(id = localId)
+
+                            // Push to server
+                            val apiInterview = syncService.pushInterview(savedInterview)
+                            Log.d(TAG, "Interview pushed to server with id: ${apiInterview.id}")
+
+                            // Step 3: Update local interview with server ID
+                            val updatedInterview = savedInterview.copy(serverId = apiInterview.id)
+                            repository.update(updatedInterview)
+                            Log.d(TAG, "Local interview updated with server id: ${apiInterview.id}")
+
+                            Snackbar.make(buttonSave, "Interview saved and synced", Snackbar.LENGTH_SHORT).show()
+                        } else {
+                            Log.w(TAG, "No auth token available, interview saved locally only")
+                        }
+                    } catch (e: Exception) {
+                        // Server push failed, but local save succeeded - that's ok for local-first
+                        Log.e(TAG, "Failed to push to server: ${e.message}", e)
+                        Snackbar.make(buttonSave, "Saved locally (sync failed)", Snackbar.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Log.d(TAG, "User not signed in, interview saved locally only")
+                }
+
+                // Return success
+                setResult(RESULT_OK)
+                finish()
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save interview: ${e.message}", e)
+                buttonSave.isEnabled = true
+                buttonSave.text = "Save"
+                Snackbar.make(buttonSave, "Failed to save: ${e.message}", Snackbar.LENGTH_LONG).show()
             }
         }
-
-        setResult(RESULT_OK, resultIntent)
-        finish()
     }
 }

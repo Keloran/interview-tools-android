@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.clerk.api.Clerk
+import com.clerk.api.network.serialization.successOrNull
 import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
@@ -187,11 +188,11 @@ class SettingsActivity : AppCompatActivity() {
 
                 // Get the session token from Clerk
                 val session = Clerk.sessionFlow.value
-                val token = session?.fetchToken()?.toString()
+                val token = session?.fetchToken()?.successOrNull()
 
                 if (token != null) {
                     Log.d(TAG, "Got auth token, starting sync...")
-                    APIService.getInstance().setAuthToken(token)
+                    APIService.getInstance().setAuthToken(token.jwt)
                     syncService.syncAll()
 
                     Snackbar.make(itemSyncNow, "Sync completed", Snackbar.LENGTH_SHORT).show()
