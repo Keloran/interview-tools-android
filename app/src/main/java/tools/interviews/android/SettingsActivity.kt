@@ -3,17 +3,26 @@ package tools.interviews.android
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.widget.ImageView
+import android.util.Log
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.clerk.api.Clerk
+import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
+import tools.interviews.android.data.api.APIService
+import tools.interviews.android.data.api.SyncService
+import java.time.format.DateTimeFormatter
 
 class SettingsActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "SettingsActivity"
+    }
 
     private lateinit var toolbar: MaterialToolbar
     private lateinit var itemSignIn: LinearLayout
@@ -25,15 +34,20 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var itemWebsite: LinearLayout
     private lateinit var textVersion: TextView
 
+    private lateinit var syncService: SyncService
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
+
+        syncService = (application as InterviewApplication).syncService
 
         setupViews()
         setupToolbar()
         setupClickListeners()
         displayVersion()
         observeAuthState()
+        observeSyncState()
     }
 
     override fun onResume() {
@@ -76,7 +90,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         itemSyncNow.setOnClickListener {
-            // Sync will be implemented later (requires sign in first)
+            performSync()
         }
 
         itemWebsite.setOnClickListener {
@@ -121,6 +135,76 @@ class SettingsActivity : AppCompatActivity() {
             textVersion.text = packageInfo.versionName
         } catch (e: Exception) {
             textVersion.text = "1.0"
+        }
+    }
+
+    private fun observeSyncState() {
+        // Observe syncing state
+        lifecycleScope.launch {
+            syncService.isSyncing.collect { isSyncing ->
+                if (isSyncing) {
+                    textLastSynced.text = "Syncing..."
+                    itemSyncNow.isEnabled = false
+                } else {
+                    itemSyncNow.isEnabled = Clerk.user != null
+                }
+            }
+        }
+
+        // Observe last sync date
+        lifecycleScope.launch {
+            syncService.lastSyncDate.collect { lastSync ->
+                if (lastSync != null) {
+                    val formatter = DateTimeFormatter.ofPattern("MMM d, h:mm a")
+                    textLastSynced.text = "Last synced: ${lastSync.format(formatter)}"
+                } else if (!syncService.isSyncing.value) {
+                    textLastSynced.text = "Never synced"
+                }
+            }
+        }
+
+        // Observe sync errors
+        lifecycleScope.launch {
+            syncService.syncError.collect { error ->
+                if (error != null) {
+                    textLastSynced.text = "Sync failed"
+                    Snackbar.make(itemSyncNow, "Sync failed: ${error.message}", Snackbar.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun performSync() {
+        val user = Clerk.user
+        if (user == null) {
+            Snackbar.make(itemSyncNow, "Please sign in to sync", Snackbar.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                textLastSynced.text = "Syncing..."
+
+                // Get the session token from Clerk
+                val session = Clerk.sessionFlow.value
+                val token = session?.fetchToken()?.toString()
+
+                if (token != null) {
+                    Log.d(TAG, "Got auth token, starting sync...")
+                    APIService.getInstance().setAuthToken(token)
+                    syncService.syncAll()
+
+                    Snackbar.make(itemSyncNow, "Sync completed", Snackbar.LENGTH_SHORT).show()
+                } else {
+                    Log.w(TAG, "No auth token available")
+                    textLastSynced.text = "Sync failed"
+                    Snackbar.make(itemSyncNow, "Unable to get auth token", Snackbar.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Sync failed: ${e.message}", e)
+                textLastSynced.text = "Sync failed"
+                Snackbar.make(itemSyncNow, "Sync failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+            }
         }
     }
 }

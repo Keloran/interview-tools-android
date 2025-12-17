@@ -79,7 +79,6 @@ dependencies {
     // Clerk Authentication
     implementation(libs.clerk.api)
     implementation(libs.clerk.ui)
-
     // Networking
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)

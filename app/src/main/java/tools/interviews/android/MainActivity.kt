@@ -3,6 +3,7 @@ package tools.interviews.android
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
@@ -18,14 +19,21 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.clerk.api.Clerk
+import com.clerk.api.network.serialization.successOrNull
+import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tools.interviews.android.adapter.InterviewAdapter
 import tools.interviews.android.data.InterviewRepository
+import tools.interviews.android.data.api.APIService
+import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewMethod
 import tools.interviews.android.model.InterviewOutcome
@@ -50,10 +58,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var companySearchAdapter: ArrayAdapter<String>
 
     private lateinit var repository: InterviewRepository
+    private lateinit var syncService: SyncService
     private var allInterviews = listOf<Interview>()
     private var allCompanies = listOf<String>()
     private var selectedDate: LocalDate? = null
     private var companyFilter: String? = null
+    private var hasSyncedThisSession = false
+
+    companion object {
+        private const val TAG = "MainActivity"
+    }
 
     private val dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
 
@@ -77,7 +91,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        repository = (application as InterviewApplication).repository
+        val app = application as InterviewApplication
+        repository = app.repository
+        syncService = app.syncService
 
         setupViews()
         setupToolbar()
@@ -86,6 +102,59 @@ class MainActivity : AppCompatActivity() {
         setupFab()
         setupSearch()
         observeData()
+        observeAuthAndSync()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-sync when returning to the app (e.g., after sign-in from settings)
+        if (!hasSyncedThisSession) {
+            checkAndSync()
+        }
+    }
+
+    private fun observeAuthAndSync() {
+        // Observe user auth state and sync when signed in
+        lifecycleScope.launch {
+            Clerk.userFlow.collect { user ->
+                if (user != null && !hasSyncedThisSession) {
+                    Log.d(TAG, "User signed in, triggering sync...")
+                    performSync()
+                }
+            }
+        }
+    }
+
+    private fun checkAndSync() {
+        lifecycleScope.launch {
+            val user = Clerk.userFlow.value
+            if (user != null) {
+                performSync()
+            }
+        }
+    }
+
+    private fun performSync() {
+        lifecycleScope.launch {
+            try {
+                // Get the session token from Clerk
+                val session = Clerk.sessionFlow.value
+                val token = session?.fetchToken()?.successOrNull()
+
+                if (token != null) {
+                    Log.d(TAG, "Got auth token, starting sync...")
+                    APIService.getInstance().setAuthToken(token.jwt)
+                    syncService.syncAll()
+                    hasSyncedThisSession = true
+                    Log.d(TAG, "Sync completed")
+                } else {
+                    Log.w(TAG, "No auth token available, skipping sync")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Sync failed: ${e.message}", e)
+                Snackbar.make(recyclerView, "Sync failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun setupViews() {

@@ -17,8 +17,17 @@ interface InterviewDao {
     @Query("SELECT * FROM interviews WHERE id = :id")
     suspend fun getInterviewById(id: Long): Interview?
 
+    @Query("SELECT * FROM interviews WHERE serverId = :serverId")
+    suspend fun getInterviewByServerId(serverId: Int): Interview?
+
+    @Query("SELECT * FROM interviews WHERE serverId IS NULL")
+    suspend fun getUnsyncedInterviews(): List<Interview>
+
     @Query("SELECT DISTINCT companyName FROM interviews ORDER BY companyName ASC")
     fun getAllCompanies(): Flow<List<String>>
+
+    @Query("SELECT serverId FROM interviews WHERE serverId IS NOT NULL")
+    suspend fun getAllServerIds(): List<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(interview: Interview): Long
@@ -31,4 +40,7 @@ interface InterviewDao {
 
     @Query("DELETE FROM interviews WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM interviews WHERE serverId = :serverId")
+    suspend fun deleteByServerId(serverId: Int)
 }
