@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -11,11 +14,25 @@ android {
         version = release(36)
     }
 
+    signingConfigs {
+        create("release") {
+            // Logic: Checks Env vars (GitHub Actions).
+            // If missing, falls back to a dummy "keystore.jks" to prevent sync errors.
+            val keystorePath = System.getenv("KEYSTORE_FILE") ?: "keystore.jks"
+
+            // Fixed: Kotlin DSL requires '=' for assignments
+            storeFile = file(keystorePath)
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
+    }
+
     defaultConfig {
         applicationId = "tools.interviews.android"
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
+        versionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -23,6 +40,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
