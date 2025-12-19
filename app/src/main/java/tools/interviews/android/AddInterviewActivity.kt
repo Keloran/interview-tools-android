@@ -49,6 +49,7 @@ class AddInterviewActivity : AppCompatActivity() {
         const val EXTRA_APPLICATION_DATE = "application_date"
         const val EXTRA_NOTES = "notes"
         const val EXTRA_METADATA_JSON = "metadata_json"
+        const val EXTRA_PREVIOUS_INTERVIEW_ID = "previous_interview_id"
     }
 
     private lateinit var toolbar: MaterialToolbar
@@ -78,6 +79,7 @@ class AddInterviewActivity : AppCompatActivity() {
     private var initialDate: LocalDate? = null  // Store the date passed from calendar
     private var existingCompanies = mutableListOf<String>()
     private var isNextStageMode = false
+    private var previousInterviewId: Long? = null
     private var originalApplicationDate: LocalDate? = null
     private var originalMetadataJSON: String? = null
 
@@ -153,6 +155,10 @@ class AddInterviewActivity : AppCompatActivity() {
         if (isNextStageMode) {
             // Update toolbar title
             toolbar.title = "Next Stage"
+
+            // Get previous interview ID to mark as passed after saving
+            previousInterviewId = intent.getLongExtra(EXTRA_PREVIOUS_INTERVIEW_ID, -1L)
+                .takeIf { it != -1L }
 
             // Pre-fill all metadata from previous interview
             intent.getStringExtra(EXTRA_COMPANY_NAME)?.let {
@@ -484,6 +490,30 @@ class AddInterviewActivity : AppCompatActivity() {
                     }
                 } else {
                     Log.d(TAG, "User not signed in, interview saved locally only")
+                }
+
+                // If this is next stage mode, mark the previous interview as passed
+                previousInterviewId?.let { prevId ->
+                    try {
+                        val previousInterview = repository.getById(prevId)
+                        if (previousInterview != null) {
+                            val updatedPrevious = previousInterview.copy(outcome = InterviewOutcome.PASSED)
+                            repository.update(updatedPrevious)
+                            Log.d(TAG, "Previous interview $prevId marked as PASSED")
+
+                            // Sync to server if previously synced
+                            if (previousInterview.serverId != null && Clerk.user != null) {
+                                try {
+                                    syncService.updateRemoteInterview(previousInterview.serverId, updatedPrevious)
+                                    Log.d(TAG, "Previous interview updated on server")
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Failed to update previous interview on server: ${e.message}", e)
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to update previous interview: ${e.message}", e)
+                    }
                 }
 
                 // Return success

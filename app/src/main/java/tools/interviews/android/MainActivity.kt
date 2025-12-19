@@ -258,6 +258,7 @@ class MainActivity : AppCompatActivity() {
     private fun launchNextStage(interview: Interview) {
         val intent = Intent(this, AddInterviewActivity::class.java).apply {
             putExtra(AddInterviewActivity.EXTRA_NEXT_STAGE_MODE, true)
+            putExtra(AddInterviewActivity.EXTRA_PREVIOUS_INTERVIEW_ID, interview.id)
             putExtra(AddInterviewActivity.EXTRA_COMPANY_NAME, interview.companyName)
             putExtra(AddInterviewActivity.EXTRA_CLIENT_COMPANY, interview.clientCompany)
             putExtra(AddInterviewActivity.EXTRA_JOB_TITLE, interview.jobTitle)
