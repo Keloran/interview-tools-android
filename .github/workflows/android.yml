@@ -93,13 +93,26 @@ jobs:
           path: ./release
 
       - name: Download Mapping File
+        id: download_mapping
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           name: mapping
           path: ./mapping
 
-      - name: Upload to Play Store
+      - name: Check for Mapping File
+        id: check_mapping
+        run: |
+          if [[ -f "./mapping/mapping.txt" ]]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Mapping file found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No mapping file (ProGuard/R8 may be disabled)"
+          fi
+
+      - name: Upload to Play Store (with mapping)
+        if: steps.check_mapping.outputs.exists == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_CONFIG_JSON }}
@@ -108,3 +121,13 @@ jobs:
           track: ${{ needs.build.outputs.deploy_track }}
           status: completed
           mappingFile: ./mapping/mapping.txt
+
+      - name: Upload to Play Store (without mapping)
+        if: steps.check_mapping.outputs.exists == 'false'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_CONFIG_JSON }}
+          packageName: tools.interviews.android
+          releaseFiles: ./release/app-release.aab
+          track: ${{ needs.build.outputs.deploy_track }}
+          status: completed
