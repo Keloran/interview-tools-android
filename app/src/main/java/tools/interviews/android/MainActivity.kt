@@ -19,6 +19,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.clerk.api.Clerk
 import com.clerk.api.network.serialization.successOrNull
 import com.clerk.api.session.fetchToken
@@ -27,8 +28,6 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tools.interviews.android.adapter.InterviewAdapter
 import tools.interviews.android.data.InterviewRepository
@@ -51,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fabAddInterview: FloatingActionButton
     private lateinit var editSearchCompany: AutoCompleteTextView
     private lateinit var buttonClearSearch: ImageButton
+    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var adapter: InterviewAdapter
     private lateinit var companySearchAdapter: ArrayAdapter<String>
 
@@ -158,6 +158,44 @@ class MainActivity : AppCompatActivity() {
         fabAddInterview = findViewById(R.id.fabAddInterview)
         editSearchCompany = findViewById(R.id.editSearchCompany)
         buttonClearSearch = findViewById(R.id.buttonClearSearch)
+        swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
+
+        // Setup pull-to-refresh
+        swipeRefreshLayout.setOnRefreshListener {
+            performPullToRefreshSync()
+        }
+    }
+
+    private fun performPullToRefreshSync() {
+        lifecycleScope.launch {
+            try {
+                val user = Clerk.userFlow.value
+                if (user == null) {
+                    Snackbar.make(recyclerView, "Sign in to sync interviews", Snackbar.LENGTH_SHORT).show()
+                    swipeRefreshLayout.isRefreshing = false
+                    return@launch
+                }
+
+                val session = Clerk.sessionFlow.value
+                val token = session?.fetchToken()?.successOrNull()
+
+                if (token != null) {
+                    Log.d(TAG, "Pull-to-refresh: starting sync...")
+                    APIService.getInstance().setAuthToken(token.jwt)
+                    syncService.syncAll()
+                    Log.d(TAG, "Pull-to-refresh: sync completed")
+                    Snackbar.make(recyclerView, "Sync complete", Snackbar.LENGTH_SHORT).show()
+                } else {
+                    Log.w(TAG, "Pull-to-refresh: no auth token available")
+                    Snackbar.make(recyclerView, "Unable to sync - please sign in again", Snackbar.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Pull-to-refresh sync failed: ${e.message}", e)
+                Snackbar.make(recyclerView, "Sync failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+            } finally {
+                swipeRefreshLayout.isRefreshing = false
+            }
+        }
     }
 
     private fun setupToolbar() {
