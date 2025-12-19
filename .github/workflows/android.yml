@@ -4,11 +4,16 @@ on:
   push:
     branches:
       - main
-      - 'feature/**' # Triggers on feature branches
+      - 'feature/**'
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check_deploy.outputs.should_deploy }}
+      deploy_track: ${{ steps.check_deploy.outputs.deploy_track }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -33,7 +38,6 @@ jobs:
           encodedString: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       # Build the AAB
-      # We pass -PversionCode=${{ github.run_number }} to increment the version automatically
       - name: Build Release Bundle
         run: ./gradlew bundleRelease -PversionCode=${{ github.run_number }}
         env:
@@ -42,27 +46,65 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      # Determine Track: Main -> Production, Others -> Internal (Closed)
-      - name: Determine Track
-        id: track
+      # Determine if we should deploy and to which track
+      - name: Check Deployment Target
+        id: check_deploy
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "track_name=production" >> $GITHUB_OUTPUT
-            echo "status=draft" >> $GITHUB_OUTPUT
-            echo "Deployment target: PRODUCTION (Draft)"
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "deploy_track=production" >> $GITHUB_OUTPUT
+            echo "🚀 Tagged release - will deploy to PRODUCTION"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "deploy_track=internal" >> $GITHUB_OUTPUT
+            echo "🧪 Main branch - will deploy to INTERNAL TESTING"
           else
-            echo "track_name=internal" >> $GITHUB_OUTPUT
-            echo "status=completed" >> $GITHUB_OUTPUT
-            echo "Deployment target: INTERNAL / CLOSED TESTING"
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+            echo "deploy_track=" >> $GITHUB_OUTPUT
+            echo "🔨 Feature branch - build only, no deployment"
           fi
+
+      # Upload AAB as artifact (useful for feature branches and debugging)
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
+      # Upload mapping file as artifact
+      - name: Upload Mapping File
+        uses: actions/upload-artifact@v4
+        if: hashFiles('app/build/outputs/mapping/release/mapping.txt') != ''
+        with:
+          name: mapping
+          path: app/build/outputs/mapping/release/mapping.txt
+          retention-days: 14
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.outputs.should_deploy == 'true'
+    steps:
+      - name: Download AAB Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release
+          path: ./release
+
+      - name: Download Mapping File
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: mapping
+          path: ./mapping
 
       - name: Upload to Play Store
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_CONFIG_JSON }}
           packageName: tools.interviews.android
-          releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          track: ${{ steps.track.outputs.track_name }}
-          status: ${{ steps.track.outputs.status }}
-          # Mappings for crash de-obfuscation
-          mappingFile: app/build/outputs/mapping/release/mapping.txt
+          releaseFiles: ./release/app-release.aab
+          track: ${{ needs.build.outputs.deploy_track }}
+          status: completed
+          mappingFile: ./mapping/mapping.txt

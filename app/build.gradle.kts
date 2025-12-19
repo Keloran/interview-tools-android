@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.window)
+    implementation(libs.androidx.swiperefresh)
 
     // Room Database
     implementation(libs.androidx.room.runtime)

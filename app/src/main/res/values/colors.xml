@@ -12,7 +12,7 @@
     <color name="outcome_scheduled">#FF2196F3</color>
     <color name="outcome_passed">#FF4CAF50</color>
     <color name="outcome_rejected">#FFF44336</color>
-    <color name="outcome_awaiting">#FFFFEB3B</color>
+    <color name="outcome_awaiting">#FF000000</color>
     <color name="outcome_offer_received">#FF9C27B0</color>
     <color name="outcome_offer_accepted">#FF4CAF50</color>
     <color name="outcome_offer_declined">#FFFF9800</color>
