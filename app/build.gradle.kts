@@ -1,6 +1,3 @@
-import java.io.FileInputStream
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -30,7 +27,7 @@ android {
 
     defaultConfig {
         applicationId = "tools.interviews.android"
-        minSdk = 31
+        minSdk = 26
         targetSdk = 36
         versionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 1
         versionName = "1.0.1"
@@ -60,14 +57,6 @@ android {
         compose = true
     }
 }
-
-//configurations.all {
-//    resolutionStrategy.dependencySubstitution {
-//        substitute(module("com.clerk:clerk-android-telemetry"))
-//            .using(module("com.clerk:clerk-android-telemetry-android:0.1.1"))
-//            .because("Clerk SDK references wrong artifact name")
-//    }
-//}
 
 dependencies {
     implementation(libs.androidx.core.ktx)
