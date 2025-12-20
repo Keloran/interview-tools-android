@@ -327,7 +327,8 @@ class SyncService(
         )
     }
 
-    private fun mapApiStageToLocal(stageName: String?): InterviewStage {
+    // Made internal for testing
+    internal fun mapApiStageToLocal(stageName: String?): InterviewStage {
         if (stageName == null) return InterviewStage.APPLIED
 
         return when (stageName.lowercase()) {
@@ -346,7 +347,8 @@ class SyncService(
         }
     }
 
-    private fun mapApiMethodToLocal(methodName: String?): InterviewMethod? {
+    // Made internal for testing
+    internal fun mapApiMethodToLocal(methodName: String?): InterviewMethod? {
         if (methodName == null) return null
 
         return when (methodName.lowercase()) {
@@ -357,7 +359,8 @@ class SyncService(
         }
     }
 
-    private fun mapApiOutcomeToLocal(outcomeName: String?): InterviewOutcome {
+    // Made internal for testing
+    internal fun mapApiOutcomeToLocal(outcomeName: String?): InterviewOutcome {
         if (outcomeName == null) return InterviewOutcome.SCHEDULED
 
         return when (outcomeName.lowercase()) {
