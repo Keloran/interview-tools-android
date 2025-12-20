@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - 'feature/**'
     tags:
       - 'v*'  # Triggers on version tags like v1.0.0
 
@@ -12,7 +11,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      should_deploy: ${{ steps.check_deploy.outputs.should_deploy }}
       deploy_track: ${{ steps.check_deploy.outputs.deploy_track }}
     steps:
       - name: Checkout Code
@@ -46,22 +44,16 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      # Determine if we should deploy and to which track
+      # Determine deployment track (main -> internal testing, tag -> production)
       - name: Check Deployment Target
         id: check_deploy
         run: |
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
             echo "deploy_track=production" >> $GITHUB_OUTPUT
-            echo "🚀 Tagged release - will deploy to PRODUCTION"
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-            echo "deploy_track=internal" >> $GITHUB_OUTPUT
-            echo "🧪 Main branch - will deploy to INTERNAL TESTING"
+            echo "🚀 Tagged release - deploying to PRODUCTION"
           else
-            echo "should_deploy=false" >> $GITHUB_OUTPUT
-            echo "deploy_track=" >> $GITHUB_OUTPUT
-            echo "🔨 Feature branch - build only, no deployment"
+            echo "deploy_track=internal" >> $GITHUB_OUTPUT
+            echo "🧪 Main branch - deploying to INTERNAL TESTING"
           fi
 
       # Upload AAB as artifact (useful for feature branches and debugging)
@@ -84,7 +76,6 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: needs.build.outputs.should_deploy == 'true'
     steps:
       - name: Download AAB Artifact
         uses: actions/download-artifact@v4
