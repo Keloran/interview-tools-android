@@ -436,22 +436,8 @@
                 tools:text="December 10, 2025" />
 
             <!-- Delete Button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonDelete"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:text="Delete Interview"
-                android:textColor="@color/outcome_rejected"
-                app:icon="@drawable/ic_delete"
-                app:iconTint="@color/outcome_rejected"
-                app:iconGravity="textStart" />
 
             <!-- Bottom spacing -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="32dp" />
 
         </LinearLayout>
 

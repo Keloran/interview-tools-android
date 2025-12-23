@@ -112,7 +112,6 @@ class AddInterviewActivity : AppCompatActivity() {
         buttonSave = findViewById(R.id.buttonSave)
         dropdownStage = findViewById(R.id.dropdownStage)
         editCompanyName = findViewById(R.id.editCompanyName)
-        editClientCompany = findViewById(R.id.editClientCompany)
         editJobTitle = findViewById(R.id.editJobTitle)
         editJobListing = findViewById(R.id.editJobListing)
         sectionInterviewDetails = findViewById(R.id.sectionInterviewDetails)
@@ -421,7 +420,6 @@ class AddInterviewActivity : AppCompatActivity() {
             serverId = null, // Not synced yet
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = companyName,
-            clientCompany = editClientCompany.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             stage = selectedStage,
             method = selectedMethod,
             outcome = outcome,

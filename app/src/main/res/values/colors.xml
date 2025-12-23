@@ -12,13 +12,13 @@
     <color name="outcome_scheduled">#FF2196F3</color>
     <color name="outcome_passed">#FF4CAF50</color>
     <color name="outcome_rejected">#FFF44336</color>
-    <color name="outcome_awaiting">#FF000000</color>
+    <color name="outcome_awaiting">#FFD800</color>
     <color name="outcome_offer_received">#FF9C27B0</color>
     <color name="outcome_offer_accepted">#FF4CAF50</color>
     <color name="outcome_offer_declined">#FFFF9800</color>
     <color name="outcome_withdrew">#FF9E9E9E</color>
 
     <!-- Badge Colors -->
-    <color name="badge_stage_background">#33808080</color>
-    <color name="badge_method_background">#332196F3</color>
+    <color name="badge_stage_background">#F4C2C2</color>
+    <color name="badge_method_background">#E3DAC9</color>
 </resources>

@@ -89,7 +89,6 @@ class EditInterviewActivity : AppCompatActivity() {
         buttonSave = findViewById(R.id.buttonSave)
         dropdownStage = findViewById(R.id.dropdownStage)
         editCompanyName = findViewById(R.id.editCompanyName)
-        editClientCompany = findViewById(R.id.editClientCompany)
         editJobTitle = findViewById(R.id.editJobTitle)
         editJobListing = findViewById(R.id.editJobListing)
         sectionInterviewDetails = findViewById(R.id.sectionInterviewDetails)

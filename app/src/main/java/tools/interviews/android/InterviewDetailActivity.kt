@@ -113,7 +113,6 @@ class InterviewDetailActivity : AppCompatActivity() {
         cardNotes = findViewById(R.id.cardNotes)
         textNotes = findViewById(R.id.textNotes)
         textApplicationDate = findViewById(R.id.textApplicationDate)
-        buttonDelete = findViewById(R.id.buttonDelete)
     }
 
     private fun setupToolbar() {
@@ -123,10 +122,6 @@ class InterviewDetailActivity : AppCompatActivity() {
 
         buttonEdit.setOnClickListener {
             interview?.let { editInterview(it) }
-        }
-
-        buttonDelete.setOnClickListener {
-            showDeleteConfirmation()
         }
     }
 
@@ -280,23 +275,5 @@ class InterviewDetailActivity : AppCompatActivity() {
             putExtra(EditInterviewActivity.EXTRA_INTERVIEW_ID, interview.id)
         }
         startActivity(intent)
-    }
-
-    private fun showDeleteConfirmation() {
-        AlertDialog.Builder(this)
-            .setTitle("Delete Interview")
-            .setMessage("Are you sure you want to delete this interview? This action cannot be undone.")
-            .setPositiveButton("Delete") { _, _ ->
-                deleteInterview()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun deleteInterview() {
-        lifecycleScope.launch {
-            repository.deleteById(interviewId)
-            finish()
-        }
     }
 }
