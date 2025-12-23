@@ -180,6 +180,12 @@ class InterviewDetailActivity : AppCompatActivity() {
         badgeOutcome.setBackgroundColor(getOutcomeColor(interview.outcome))
         badgeOutcome.setTextColor(getOutcomeTextColor(interview.outcome))
 
+        // Hide action buttons if outcome is final (rejected or passed)
+        val isOutcomeFinal = interview.outcome == InterviewOutcome.REJECTED ||
+                             interview.outcome == InterviewOutcome.PASSED
+        buttonReject.isVisible = !isOutcomeFinal
+        buttonForward.isVisible = !isOutcomeFinal
+
         // Stage badge
         badgeStage.text = interview.stage.displayName
 
