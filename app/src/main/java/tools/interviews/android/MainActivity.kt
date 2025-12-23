@@ -27,6 +27,11 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.UpdateAvailability
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import tools.interviews.android.adapter.InterviewAdapter
@@ -62,6 +67,16 @@ class MainActivity : AppCompatActivity() {
     private var companyFilter: String? = null
     private var hasSyncedThisSession = false
 
+    private lateinit var appUpdateManager: AppUpdateManager
+
+    private val updateLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) {
+            Log.w(TAG, "Update flow failed with result code: ${result.resultCode}")
+        }
+    }
+
     companion object {
         private const val TAG = "MainActivity"
     }
@@ -93,6 +108,9 @@ class MainActivity : AppCompatActivity() {
         setupSearch()
         observeData()
         observeAuthAndSync()
+
+        appUpdateManager = AppUpdateManagerFactory.create(this)
+        checkForUpdates()
     }
 
     override fun onResume() {
@@ -501,4 +519,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkForUpdates() {
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
+            if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE && info.isUpdateTypeAllowed(
+                    AppUpdateType.IMMEDIATE
+                )
+            ) {
+                appUpdateManager.startUpdateFlowForResult(
+                    info,
+                    updateLauncher,
+                    AppUpdateOptions.defaultOptions(AppUpdateType.IMMEDIATE)
+                )
+            }
+        }
+    }
 }
