@@ -148,34 +148,15 @@
                     android:paddingBottom="8dp" />
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/layoutInterviewDate"
+                    android:id="@+id/layoutInterviewDateTime"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Interview Date"
+                    android:hint="Interview Date &amp; Time"
                     app:startIconDrawable="@drawable/ic_calendar_empty">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/editInterviewDate"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="none"
-                        android:focusable="false"
-                        android:clickable="true" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/layoutInterviewTime"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:hint="Interview Time"
-                    app:startIconDrawable="@drawable/ic_schedule">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/editInterviewTime"
+                        android:id="@+id/editInterviewDateTime"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="none"
