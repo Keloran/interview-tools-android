@@ -18,6 +18,28 @@
         app:navigationIconTint="?attr/colorOnSurface">
 
         <ImageButton
+            android:id="@+id/buttonReject"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Rejected"
+            android:src="@drawable/ic_rejected"
+            app:tint="?attr/colorOnSurface" />
+
+        <ImageButton
+            android:id="@+id/buttonForward"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Next Stage"
+            android:src="@drawable/ic_forward"
+            app:tint="?attr/colorOnSurface" />
+
+        <ImageButton
             android:id="@+id/buttonEdit"
             android:layout_width="48dp"
             android:layout_height="48dp"
