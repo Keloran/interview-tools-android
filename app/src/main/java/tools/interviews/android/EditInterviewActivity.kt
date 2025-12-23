@@ -1,7 +1,6 @@
 package tools.interviews.android
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.os.Bundle
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
@@ -12,8 +11,11 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.google.android.material.timepicker.MaterialTimePicker
+import com.google.android.material.timepicker.TimeFormat
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tools.interviews.android.data.InterviewRepository
@@ -21,9 +23,11 @@ import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewMethod
 import tools.interviews.android.model.InterviewOutcome
 import tools.interviews.android.model.InterviewStage
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class EditInterviewActivity : AppCompatActivity() {
@@ -36,8 +40,7 @@ class EditInterviewActivity : AppCompatActivity() {
     private lateinit var editJobTitle: TextInputEditText
     private lateinit var editJobListing: TextInputEditText
     private lateinit var sectionInterviewDetails: LinearLayout
-    private lateinit var editInterviewDate: TextInputEditText
-    private lateinit var editInterviewTime: TextInputEditText
+    private lateinit var editInterviewDateTime: TextInputEditText
     private lateinit var dropdownMethod: AutoCompleteTextView
     private lateinit var editInterviewer: TextInputEditText
     private lateinit var layoutMeetingLink: TextInputLayout
@@ -54,14 +57,13 @@ class EditInterviewActivity : AppCompatActivity() {
     private var selectedStage: InterviewStage = InterviewStage.APPLIED
     private var selectedMethod: InterviewMethod? = null
     private var selectedOutcome: InterviewOutcome = InterviewOutcome.SCHEDULED
-    private var selectedDate: LocalDate? = null
-    private var selectedTime: LocalTime? = null
+    private var selectedDateTime: LocalDateTime? = null
     private var selectedDeadline: LocalDate? = null
     private var applicationDate: LocalDate = LocalDate.now()
     private var existingCompanies = mutableListOf<String>()
 
+    private val dateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy 'at' h:mm a")
     private val dateFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")
-    private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
 
     companion object {
         const val EXTRA_INTERVIEW_ID = "interview_id"
@@ -89,12 +91,10 @@ class EditInterviewActivity : AppCompatActivity() {
         buttonSave = findViewById(R.id.buttonSave)
         dropdownStage = findViewById(R.id.dropdownStage)
         editCompanyName = findViewById(R.id.editCompanyName)
-        editClientCompany = findViewById(R.id.editClientCompany)
         editJobTitle = findViewById(R.id.editJobTitle)
         editJobListing = findViewById(R.id.editJobListing)
         sectionInterviewDetails = findViewById(R.id.sectionInterviewDetails)
-        editInterviewDate = findViewById(R.id.editInterviewDate)
-        editInterviewTime = findViewById(R.id.editInterviewTime)
+        editInterviewDateTime = findViewById(R.id.editInterviewDateTime)
         dropdownMethod = findViewById(R.id.dropdownMethod)
         editInterviewer = findViewById(R.id.editInterviewer)
         layoutMeetingLink = findViewById(R.id.layoutMeetingLink)
@@ -147,10 +147,8 @@ class EditInterviewActivity : AppCompatActivity() {
         editJobListing.setText(interview.jobListing ?: "")
 
         interview.interviewDate?.let {
-            selectedDate = it.toLocalDate()
-            selectedTime = it.toLocalTime()
-            editInterviewDate.setText(selectedDate?.format(dateFormatter))
-            editInterviewTime.setText(selectedTime?.format(timeFormatter))
+            selectedDateTime = it
+            editInterviewDateTime.setText(it.format(dateTimeFormatter))
         }
 
         interview.deadline?.let {
@@ -230,11 +228,9 @@ class EditInterviewActivity : AppCompatActivity() {
 
         if (!showInterviewDetails && !isTechnicalTest) {
             // Clear interview details if hiding (and not switching to technical test)
-            selectedDate = null
-            selectedTime = null
+            selectedDateTime = null
             selectedMethod = null
-            editInterviewDate.text?.clear()
-            editInterviewTime.text?.clear()
+            editInterviewDateTime.text?.clear()
             dropdownMethod.text?.clear()
             editInterviewer.text?.clear()
             editMeetingLink.text?.clear()
@@ -249,12 +245,8 @@ class EditInterviewActivity : AppCompatActivity() {
     }
 
     private fun setupDateTimePickers() {
-        editInterviewDate.setOnClickListener {
-            showDatePicker()
-        }
-
-        editInterviewTime.setOnClickListener {
-            showTimePicker()
+        editInterviewDateTime.setOnClickListener {
+            showDateTimePicker()
         }
 
         editDeadline.setOnClickListener {
@@ -262,36 +254,47 @@ class EditInterviewActivity : AppCompatActivity() {
         }
     }
 
-    private fun showDatePicker() {
-        val initialDate = selectedDate ?: LocalDate.now()
-        val dialog = DatePickerDialog(
-            this,
-            { _, year, month, dayOfMonth ->
-                selectedDate = LocalDate.of(year, month + 1, dayOfMonth)
-                editInterviewDate.setText(selectedDate?.format(dateFormatter))
-                validateForm()
-            },
-            initialDate.year,
-            initialDate.monthValue - 1,
-            initialDate.dayOfMonth
-        )
-        dialog.show()
-    }
+    private fun showDateTimePicker() {
+        val initialSelection = selectedDateTime
+            ?.atZone(ZoneId.systemDefault())
+            ?.toInstant()
+            ?.toEpochMilli()
+            ?: MaterialDatePicker.todayInUtcMilliseconds()
 
-    private fun showTimePicker() {
-        val initialTime = selectedTime ?: LocalTime.of(9, 0)
-        val dialog = TimePickerDialog(
-            this,
-            { _, hourOfDay, minute ->
-                selectedTime = LocalTime.of(hourOfDay, minute)
-                editInterviewTime.setText(selectedTime?.format(timeFormatter))
+        val datePicker = MaterialDatePicker.Builder.datePicker()
+            .setTitleText("Select interview date")
+            .setSelection(initialSelection)
+            .build()
+
+        datePicker.addOnPositiveButtonClickListener { dateMillis ->
+            val selectedDate = Instant.ofEpochMilli(dateMillis)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+
+            // Immediately show time picker after date is selected
+            val initialHour = selectedDateTime?.hour ?: 9
+            val initialMinute = selectedDateTime?.minute ?: 0
+
+            val timePicker = MaterialTimePicker.Builder()
+                .setTitleText("Select interview time")
+                .setTimeFormat(TimeFormat.CLOCK_12H)
+                .setHour(initialHour)
+                .setMinute(initialMinute)
+                .build()
+
+            timePicker.addOnPositiveButtonClickListener {
+                selectedDateTime = LocalDateTime.of(
+                    selectedDate,
+                    LocalTime.of(timePicker.hour, timePicker.minute)
+                )
+                editInterviewDateTime.setText(selectedDateTime?.format(dateTimeFormatter))
                 validateForm()
-            },
-            initialTime.hour,
-            initialTime.minute,
-            false
-        )
-        dialog.show()
+            }
+
+            timePicker.show(supportFragmentManager, "timePicker")
+        }
+
+        datePicker.show(supportFragmentManager, "datePicker")
     }
 
     private fun showDeadlinePicker() {
@@ -330,8 +333,7 @@ class EditInterviewActivity : AppCompatActivity() {
             }
             else -> {
                 hasBasicInfo &&
-                    selectedDate != null &&
-                    selectedTime != null &&
+                    selectedDateTime != null &&
                     selectedMethod != null
             }
         }
@@ -342,11 +344,7 @@ class EditInterviewActivity : AppCompatActivity() {
     private fun saveInterview() {
         val isTechnicalTest = selectedStage == InterviewStage.TECHNICAL_TEST
 
-        val interviewDate = if (selectedDate != null && selectedTime != null) {
-            LocalDateTime.of(selectedDate, selectedTime)
-        } else {
-            null
-        }
+        val interviewDate = selectedDateTime
 
         val deadline = if (isTechnicalTest && selectedDeadline != null) {
             selectedDeadline!!.atTime(23, 59)

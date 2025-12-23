@@ -3,18 +3,25 @@ package tools.interviews.android
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.ImageButton
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import com.clerk.api.Clerk
+import com.clerk.api.network.serialization.successOrNull
+import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 import tools.interviews.android.data.InterviewRepository
+import tools.interviews.android.data.api.APIService
+import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
 import tools.interviews.android.model.InterviewStage
@@ -24,6 +31,8 @@ class InterviewDetailActivity : AppCompatActivity() {
 
     private lateinit var toolbar: MaterialToolbar
     private lateinit var buttonEdit: ImageButton
+    private lateinit var buttonForward: ImageButton
+    private lateinit var buttonReject: ImageButton
     private lateinit var textJobTitle: TextView
     private lateinit var textCompanyName: TextView
     private lateinit var textClientCompany: TextView
@@ -52,13 +61,19 @@ class InterviewDetailActivity : AppCompatActivity() {
     private lateinit var buttonDelete: MaterialButton
 
     private lateinit var repository: InterviewRepository
+    private lateinit var syncService: SyncService
     private var interviewId: Long = -1
     private var interview: Interview? = null
 
     private val dateFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy 'at' h:mm a")
 
+    private val nextStageLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { /* Interview saved in AddInterviewActivity, will reload on resume */ }
+
     companion object {
+        private const val TAG = "InterviewDetailActivity"
         const val EXTRA_INTERVIEW_ID = "interview_id"
     }
 
@@ -66,7 +81,9 @@ class InterviewDetailActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_interview_detail)
 
-        repository = (application as InterviewApplication).repository
+        val app = application as InterviewApplication
+        repository = app.repository
+        syncService = app.syncService
         interviewId = intent.getLongExtra(EXTRA_INTERVIEW_ID, -1)
 
         if (interviewId == -1L) {
@@ -88,6 +105,8 @@ class InterviewDetailActivity : AppCompatActivity() {
     private fun setupViews() {
         toolbar = findViewById(R.id.toolbar)
         buttonEdit = findViewById(R.id.buttonEdit)
+        buttonForward = findViewById(R.id.buttonForward)
+        buttonReject = findViewById(R.id.buttonReject)
         textJobTitle = findViewById(R.id.textJobTitle)
         textCompanyName = findViewById(R.id.textCompanyName)
         textClientCompany = findViewById(R.id.textClientCompany)
@@ -113,7 +132,6 @@ class InterviewDetailActivity : AppCompatActivity() {
         cardNotes = findViewById(R.id.cardNotes)
         textNotes = findViewById(R.id.textNotes)
         textApplicationDate = findViewById(R.id.textApplicationDate)
-        buttonDelete = findViewById(R.id.buttonDelete)
     }
 
     private fun setupToolbar() {
@@ -125,8 +143,15 @@ class InterviewDetailActivity : AppCompatActivity() {
             interview?.let { editInterview(it) }
         }
 
-        buttonDelete.setOnClickListener {
-            showDeleteConfirmation()
+        buttonForward.setOnClickListener {
+            interview?.let { launchNextStage(it) }
+        }
+
+        buttonReject.setOnClickListener {
+            interview?.let {
+                updateInterviewOutcome(it, InterviewOutcome.REJECTED)
+                Snackbar.make(toolbar, "Status: Rejected", Snackbar.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -154,6 +179,12 @@ class InterviewDetailActivity : AppCompatActivity() {
         badgeOutcome.text = interview.outcome.displayName
         badgeOutcome.setBackgroundColor(getOutcomeColor(interview.outcome))
         badgeOutcome.setTextColor(getOutcomeTextColor(interview.outcome))
+
+        // Hide action buttons if outcome is final (rejected or passed)
+        val isOutcomeFinal = interview.outcome == InterviewOutcome.REJECTED ||
+                             interview.outcome == InterviewOutcome.PASSED
+        buttonReject.isVisible = !isOutcomeFinal
+        buttonForward.isVisible = !isOutcomeFinal
 
         // Stage badge
         badgeStage.text = interview.stage.displayName
@@ -282,21 +313,43 @@ class InterviewDetailActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    private fun showDeleteConfirmation() {
-        AlertDialog.Builder(this)
-            .setTitle("Delete Interview")
-            .setMessage("Are you sure you want to delete this interview? This action cannot be undone.")
-            .setPositiveButton("Delete") { _, _ ->
-                deleteInterview()
+    private fun updateInterviewOutcome(interview: Interview, newOutcome: InterviewOutcome) {
+        lifecycleScope.launch {
+            val updatedInterview = interview.copy(outcome = newOutcome)
+            repository.update(updatedInterview)
+            this@InterviewDetailActivity.interview = updatedInterview
+            displayInterview(updatedInterview)
+
+            // If interview has been synced to server, update remotely too
+            if (interview.serverId != null) {
+                try {
+                    val session = Clerk.sessionFlow.value
+                    val token = session?.fetchToken()?.successOrNull()
+
+                    if (token != null) {
+                        APIService.getInstance().setAuthToken(token.jwt)
+                        syncService.updateRemoteInterview(interview.serverId, updatedInterview)
+                        Log.d(TAG, "Updated interview outcome on server: ${newOutcome.name}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to update outcome on server: ${e.message}", e)
+                }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
     }
 
-    private fun deleteInterview() {
-        lifecycleScope.launch {
-            repository.deleteById(interviewId)
-            finish()
+    private fun launchNextStage(interview: Interview) {
+        val intent = Intent(this, AddInterviewActivity::class.java).apply {
+            putExtra(AddInterviewActivity.EXTRA_NEXT_STAGE_MODE, true)
+            putExtra(AddInterviewActivity.EXTRA_PREVIOUS_INTERVIEW_ID, interview.id)
+            putExtra(AddInterviewActivity.EXTRA_COMPANY_NAME, interview.companyName)
+            putExtra(AddInterviewActivity.EXTRA_CLIENT_COMPANY, interview.clientCompany)
+            putExtra(AddInterviewActivity.EXTRA_JOB_TITLE, interview.jobTitle)
+            putExtra(AddInterviewActivity.EXTRA_JOB_LISTING, interview.jobListing)
+            putExtra(AddInterviewActivity.EXTRA_APPLICATION_DATE, interview.applicationDate.toString())
+            putExtra(AddInterviewActivity.EXTRA_NOTES, interview.notes)
+            putExtra(AddInterviewActivity.EXTRA_METADATA_JSON, interview.metadataJSON)
         }
+        nextStageLauncher.launch(intent)
     }
 }

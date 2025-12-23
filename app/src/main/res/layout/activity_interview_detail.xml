@@ -18,6 +18,28 @@
         app:navigationIconTint="?attr/colorOnSurface">
 
         <ImageButton
+            android:id="@+id/buttonReject"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Rejected"
+            android:src="@drawable/ic_rejected"
+            app:tint="?attr/colorOnSurface" />
+
+        <ImageButton
+            android:id="@+id/buttonForward"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Next Stage"
+            android:src="@drawable/ic_forward"
+            app:tint="?attr/colorOnSurface" />
+
+        <ImageButton
             android:id="@+id/buttonEdit"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -436,22 +458,8 @@
                 tools:text="December 10, 2025" />
 
             <!-- Delete Button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonDelete"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:text="Delete Interview"
-                android:textColor="@color/outcome_rejected"
-                app:icon="@drawable/ic_delete"
-                app:iconTint="@color/outcome_rejected"
-                app:iconGravity="textStart" />
 
             <!-- Bottom spacing -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="32dp" />
 
         </LinearLayout>
 
