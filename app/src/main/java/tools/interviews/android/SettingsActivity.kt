@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.clerk.api.Clerk
 import com.clerk.api.network.serialization.successOrNull
@@ -30,6 +31,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var buttonSignIn: MaterialButton
     private lateinit var textAccountTitle: TextView
     private lateinit var textAccountSubtitle: TextView
+    private lateinit var sectionSync: LinearLayout
     private lateinit var itemSyncNow: LinearLayout
     private lateinit var textLastSynced: TextView
     private lateinit var itemWebsite: LinearLayout
@@ -62,6 +64,7 @@ class SettingsActivity : AppCompatActivity() {
         buttonSignIn = findViewById(R.id.buttonSignIn)
         textAccountTitle = findViewById(R.id.textAccountTitle)
         textAccountSubtitle = findViewById(R.id.textAccountSubtitle)
+        sectionSync = findViewById(R.id.sectionSync)
         itemSyncNow = findViewById(R.id.itemSyncNow)
         textLastSynced = findViewById(R.id.textLastSynced)
         itemWebsite = findViewById(R.id.itemWebsite)
@@ -118,15 +121,13 @@ class SettingsActivity : AppCompatActivity() {
             textAccountTitle.text = displayName
             textAccountSubtitle.text = "Tap to sign out"
             buttonSignIn.text = "Sign Out"
-            itemSyncNow.alpha = 1.0f
-            itemSyncNow.isEnabled = true
+            sectionSync.isVisible = true
         } else {
-            // User is not signed in (guest mode)
+            // User is not signed in (guest mode) - hide sync section
             textAccountTitle.text = "Guest Mode"
             textAccountSubtitle.text = "Sign in to sync across devices"
             buttonSignIn.text = "Sign In"
-            itemSyncNow.alpha = 0.5f
-            itemSyncNow.isEnabled = false
+            sectionSync.isVisible = false
         }
     }
 

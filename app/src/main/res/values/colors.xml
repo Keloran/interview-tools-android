@@ -19,6 +19,6 @@
     <color name="outcome_withdrew">#FF9E9E9E</color>
 
     <!-- Badge Colors -->
-    <color name="badge_stage_background">#F4C2C2</color>
-    <color name="badge_method_background">#E3DAC9</color>
+    <color name="badge_stage_background">#9400D3</color>
+    <color name="badge_method_background">#E30B5C</color>
 </resources>
