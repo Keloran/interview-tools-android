@@ -184,7 +184,7 @@
                 android:paddingVertical="4dp"
                 android:background="@drawable/badge_stage_background"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textColor="@color/badge_stage_text"
                 app:layout_constraintTop_toBottomOf="@id/textInterviewDate"
                 app:layout_constraintStart_toStartOf="@id/textJobTitle"
                 tools:text="First Stage" />
@@ -199,7 +199,7 @@
                 android:paddingVertical="4dp"
                 android:background="@drawable/badge_method_background"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="@color/purple_700"
+                android:textColor="@color/badge_method_text"
                 android:visibility="gone"
                 app:layout_constraintTop_toTopOf="@id/badgeStage"
                 app:layout_constraintStart_toEndOf="@id/badgeStage"

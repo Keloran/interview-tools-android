@@ -138,7 +138,7 @@
                             android:paddingVertical="6dp"
                             android:background="@drawable/badge_stage_background"
                             android:textAppearance="?attr/textAppearanceBodySmall"
-                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textColor="@color/badge_stage_text"
                             tools:text="First Stage" />
 
                         <!-- Method Badge -->
@@ -151,7 +151,7 @@
                             android:paddingVertical="6dp"
                             android:background="@drawable/badge_method_background"
                             android:textAppearance="?attr/textAppearanceBodySmall"
-                            android:textColor="@color/purple_700"
+                            android:textColor="@color/badge_method_text"
                             android:visibility="gone"
                             tools:text="Video Call"
                             tools:visibility="visible" />

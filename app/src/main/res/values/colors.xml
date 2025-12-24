@@ -21,4 +21,8 @@
     <!-- Badge Colors -->
     <color name="badge_stage_background">#9400D3</color>
     <color name="badge_method_background">#E30B5C</color>
+
+    <!-- Badge Text Colors (light mode - white for contrast on colored backgrounds) -->
+    <color name="badge_stage_text">#FFFFFFFF</color>
+    <color name="badge_method_text">#FFFFFFFF</color>
 </resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Badge Text Colors (dark mode - white text on colored backgrounds) -->
+    <color name="badge_stage_text">#FFFFFFFF</color>
+    <color name="badge_method_text">#FFFFFFFF</color>
+</resources>
