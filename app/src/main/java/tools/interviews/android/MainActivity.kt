@@ -125,6 +125,9 @@ class MainActivity : AppCompatActivity() {
         // Observe user auth state and sync when signed in
         lifecycleScope.launch {
             Clerk.userFlow.collect { user ->
+                // Enable pull-to-refresh only when signed in
+                swipeRefreshLayout.isEnabled = user != null
+
                 if (user != null && !hasSyncedThisSession) {
                     Log.d(TAG, "User signed in, triggering sync...")
                     performSync()
@@ -187,13 +190,6 @@ class MainActivity : AppCompatActivity() {
     private fun performPullToRefreshSync() {
         lifecycleScope.launch {
             try {
-                val user = Clerk.userFlow.value
-                if (user == null) {
-                    Snackbar.make(recyclerView, "Sign in to sync interviews", Snackbar.LENGTH_SHORT).show()
-                    swipeRefreshLayout.isRefreshing = false
-                    return@launch
-                }
-
                 val session = Clerk.sessionFlow.value
                 val token = session?.fetchToken()?.successOrNull()
 
