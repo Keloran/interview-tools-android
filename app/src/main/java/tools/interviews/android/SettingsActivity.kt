@@ -15,6 +15,8 @@ import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
+import gg.flags.client.Auth
+import gg.flags.client.FlagsClient
 import kotlinx.coroutines.launch
 import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
@@ -48,9 +50,18 @@ class SettingsActivity : AppCompatActivity() {
         setupViews()
         setupToolbar()
         setupClickListeners()
-        displayVersion()
         observeAuthState()
         observeSyncState()
+
+        lifecycleScope.launch {
+            val client = FlagsClient.builder().auth(Auth(
+                projectId = "198ba0bd-e7e1-4219-beee-9bd82de0e03c",
+                agentId = "f019ceaa-101f-4931-8740-b93d9a623b62",
+                environmentId = "644f2f1d-b5d8-4c31-9c53-66d7fb59d6f2")).build()
+            if (client.isEnabled("stats")) {
+                displayVersion()
+            }
+        }
     }
 
     override fun onResume() {
