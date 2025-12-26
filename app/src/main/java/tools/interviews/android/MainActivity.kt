@@ -312,7 +312,6 @@ class MainActivity : AppCompatActivity() {
             putExtra(AddInterviewActivity.EXTRA_NEXT_STAGE_MODE, true)
             putExtra(AddInterviewActivity.EXTRA_PREVIOUS_INTERVIEW_ID, interview.id)
             putExtra(AddInterviewActivity.EXTRA_COMPANY_NAME, interview.companyName)
-            putExtra(AddInterviewActivity.EXTRA_CLIENT_COMPANY, interview.clientCompany)
             putExtra(AddInterviewActivity.EXTRA_JOB_TITLE, interview.jobTitle)
             putExtra(AddInterviewActivity.EXTRA_JOB_LISTING, interview.jobListing)
             putExtra(AddInterviewActivity.EXTRA_APPLICATION_DATE, interview.applicationDate.toString())
@@ -457,8 +456,7 @@ class MainActivity : AppCompatActivity() {
             // Company filter - show ALL interviews with matching company (past and future)
             companyFilter != null -> {
                 allInterviews.filter { interview ->
-                    interview.companyName.contains(companyFilter!!, ignoreCase = true) ||
-                        interview.clientCompany?.contains(companyFilter!!, ignoreCase = true) == true
+                    interview.companyName.contains(companyFilter!!, ignoreCase = true)
                 }.sortedByDescending {
                     it.interviewDate ?: it.deadline ?: it.applicationDate.atStartOfDay()
                 }

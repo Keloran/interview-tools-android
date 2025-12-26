@@ -33,6 +33,11 @@ android {
         versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Flags.gg configuration
+        buildConfigField("String", "FLAGS_PROJECT_ID", "\"198ba0bd-e7e1-4219-beee-9bd82de0e03c\"")
+        buildConfigField("String", "FLAGS_AGENT_ID", "\"f019ceaa-101f-4931-8740-b93d9a623b62\"")
+        buildConfigField("String", "FLAGS_ENVIRONMENT_ID", "\"644f2f1d-b5d8-4c31-9c53-66d7fb59d6f2\"")
     }
 
     buildTypes {

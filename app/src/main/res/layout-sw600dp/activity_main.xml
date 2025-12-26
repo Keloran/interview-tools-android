@@ -60,7 +60,7 @@
                             android:layout_weight="1"
                             android:layout_marginStart="8dp"
                             android:background="@android:color/transparent"
-                            android:hint="Search companies..."
+                            android:hint="@string/search_companies"
                             android:inputType="text"
                             android:imeOptions="actionSearch"
                             android:completionThreshold="1"
@@ -71,7 +71,7 @@
                             android:layout_width="32dp"
                             android:layout_height="32dp"
                             android:background="?attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="Clear search"
+                            android:contentDescription="@string/clear_search"
                             android:src="@drawable/ic_close"
                             android:visibility="gone"
                             app:tint="?attr/colorOnSurfaceVariant"
@@ -86,7 +86,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Settings"
+                    android:contentDescription="@string/settings"
                     android:src="@drawable/ic_settings"
                     app:tint="?attr/colorOnSurface" />
 
@@ -148,7 +148,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:padding="16dp"
-                        android:text="Upcoming Interviews"
+                        android:text="@string/upcoming_interviews"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textStyle="bold"
                         app:layout_constraintTop_toTopOf="parent"
@@ -161,7 +161,7 @@
                         style="@style/Widget.Material3.Button.TextButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Clear"
+                        android:text="@string/clear"
                         android:visibility="gone"
                         app:layout_constraintTop_toTopOf="parent"
                         app:layout_constraintBottom_toBottomOf="parent"
@@ -217,7 +217,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="16dp"
-                                android:text="No Interviews Scheduled"
+                                android:text="@string/no_interviews_scheduled"
                                 android:textAppearance="?attr/textAppearanceTitleMedium"
                                 android:textColor="?attr/colorOnSurface" />
 
@@ -226,7 +226,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="8dp"
-                                android:text="Select a date to add an interview"
+                                android:text="@string/select_a_date_to_add_an_interview"
                                 android:textAppearance="?attr/textAppearanceBodyMedium"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -249,7 +249,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:contentDescription="Add Interview"
+        android:contentDescription="@string/add_interview"
         android:visibility="gone"
         app:srcCompat="@drawable/ic_add"
         tools:visibility="visible" />

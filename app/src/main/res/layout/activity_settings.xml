@@ -30,7 +30,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Account"
+                android:text="@string/account"
                 android:textAppearance="?attr/textAppearanceLabelMedium"
                 android:textColor="?attr/colorPrimary"
                 android:paddingBottom="8dp" />
@@ -75,14 +75,14 @@
                                 android:id="@+id/textAccountTitle"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Guest Mode"
+                                android:text="@string/guest_mode"
                                 android:textAppearance="?attr/textAppearanceBodyLarge" />
 
                             <TextView
                                 android:id="@+id/textAccountSubtitle"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Sign in to sync across devices"
+                                android:text="@string/sign_in_to_sync_across_devices"
                                 android:textAppearance="?attr/textAppearanceBodySmall"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -93,7 +93,7 @@
                             style="@style/Widget.Material3.Button.TonalButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Sign In" />
+                            android:text="@string/sign_in" />
 
                     </LinearLayout>
 
@@ -111,7 +111,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Sync"
+                    android:text="@string/sync"
                     android:textAppearance="?attr/textAppearanceLabelMedium"
                     android:textColor="?attr/colorPrimary"
                     android:paddingTop="24dp"
@@ -151,7 +151,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:layout_marginStart="16dp"
-                                android:text="Sync Now"
+                                android:text="@string/sync_now"
                                 android:textAppearance="?attr/textAppearanceBodyLarge" />
 
                         </LinearLayout>
@@ -186,14 +186,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Last Synced"
+                                    android:text="@string/last_synced"
                                     android:textAppearance="?attr/textAppearanceBodyLarge" />
 
                                 <TextView
                                     android:id="@+id/textLastSynced"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Never"
+                                    android:text="@string/never"
                                     android:textAppearance="?attr/textAppearanceBodySmall"
                                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -211,7 +211,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="About"
+                android:text="@string/about"
                 android:textAppearance="?attr/textAppearanceLabelMedium"
                 android:textColor="?attr/colorPrimary"
                 android:paddingTop="24dp"
@@ -251,7 +251,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="16dp"
-                            android:text="interviews.tools"
+                            android:text="Interviews.tools"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:textColor="?attr/colorPrimary" />
 
@@ -293,7 +293,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Version"
+                                android:text="@string/version"
                                 android:textAppearance="?attr/textAppearanceBodyLarge" />
 
                             <TextView

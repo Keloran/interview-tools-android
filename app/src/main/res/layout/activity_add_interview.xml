@@ -22,7 +22,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="end"
-            android:text="Save"
+            android:text="@string/save"
             android:enabled="false" />
 
     </com.google.android.material.appbar.MaterialToolbar>
@@ -42,7 +42,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Interview Stage"
+                android:text="@string/interview_stage"
                 android:textAppearance="?attr/textAppearanceLabelMedium"
                 android:textColor="?attr/colorPrimary"
                 android:paddingBottom="8dp" />
@@ -52,7 +52,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Stage">
+                android:hint="@string/stage">
 
                 <AutoCompleteTextView
                     android:id="@+id/dropdownStage"
@@ -66,7 +66,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Company &amp; Position"
+                android:text="@string/company_position"
                 android:textAppearance="?attr/textAppearanceLabelMedium"
                 android:textColor="?attr/colorPrimary"
                 android:paddingTop="24dp"
@@ -77,7 +77,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Company Name">
+                android:hint="@string/company_name">
 
                 <AutoCompleteTextView
                     android:id="@+id/editCompanyName"
@@ -89,20 +89,12 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layoutClientCompany"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="Client Company (Optional)"/>
-
-            <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layoutJobTitle"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="Job Title">
+                android:hint="@string/job_title">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/editJobTitle"
@@ -118,7 +110,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="Job Listing URL (Optional)"
+                android:hint="@string/job_listing_url"
                 app:startIconDrawable="@drawable/ic_link">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -141,7 +133,7 @@
                     android:id="@+id/textInterviewDetailsHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Interview Details"
+                    android:text="@string/interview_details"
                     android:textAppearance="?attr/textAppearanceLabelMedium"
                     android:textColor="?attr/colorPrimary"
                     android:paddingTop="24dp"
@@ -152,7 +144,7 @@
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Interview Date &amp; Time"
+                    android:hint="@string/interview_date_time"
                     app:startIconDrawable="@drawable/ic_calendar_empty">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -171,7 +163,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="Interview Method">
+                    android:hint="@string/interview_method">
 
                     <AutoCompleteTextView
                         android:id="@+id/dropdownMethod"
@@ -187,7 +179,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="Interviewer (Optional)">
+                    android:hint="@string/interviewer_optional">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/editInterviewer"
@@ -203,7 +195,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="Meeting Link (Optional)"
+                    android:hint="@string/meeting_link_optional"
                     android:visibility="gone">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -227,7 +219,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Technical Test Details"
+                    android:text="@string/technical_test_details"
                     android:textAppearance="?attr/textAppearanceLabelMedium"
                     android:textColor="?attr/colorPrimary"
                     android:paddingTop="24dp"
@@ -238,7 +230,7 @@
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Deadline"
+                    android:hint="@string/deadline"
                     app:startIconDrawable="@drawable/ic_calendar_empty">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -257,7 +249,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="Test Link (Optional)">
+                    android:hint="@string/test_link_optional">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/editTestLink"
@@ -273,7 +265,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Notes"
+                android:text="@string/notes"
                 android:textAppearance="?attr/textAppearanceLabelMedium"
                 android:textColor="?attr/colorPrimary"
                 android:paddingTop="24dp"
@@ -284,7 +276,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Notes (Optional)">
+                android:hint="@string/notes_optional">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/editNotes"

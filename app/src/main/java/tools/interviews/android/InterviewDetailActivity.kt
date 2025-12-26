@@ -33,9 +33,10 @@ class InterviewDetailActivity : AppCompatActivity() {
     private lateinit var buttonEdit: ImageButton
     private lateinit var buttonForward: ImageButton
     private lateinit var buttonReject: ImageButton
+
+    private lateinit var buttonAwaiting: ImageButton
     private lateinit var textJobTitle: TextView
     private lateinit var textCompanyName: TextView
-    private lateinit var textClientCompany: TextView
     private lateinit var badgeOutcome: TextView
     private lateinit var badgeStage: TextView
     private lateinit var badgeMethod: TextView
@@ -58,7 +59,6 @@ class InterviewDetailActivity : AppCompatActivity() {
     private lateinit var cardNotes: MaterialCardView
     private lateinit var textNotes: TextView
     private lateinit var textApplicationDate: TextView
-    private lateinit var buttonDelete: MaterialButton
 
     private lateinit var repository: InterviewRepository
     private lateinit var syncService: SyncService
@@ -107,9 +107,9 @@ class InterviewDetailActivity : AppCompatActivity() {
         buttonEdit = findViewById(R.id.buttonEdit)
         buttonForward = findViewById(R.id.buttonForward)
         buttonReject = findViewById(R.id.buttonReject)
+        buttonAwaiting = findViewById(R.id.buttonAwaiting)
         textJobTitle = findViewById(R.id.textJobTitle)
         textCompanyName = findViewById(R.id.textCompanyName)
-        textClientCompany = findViewById(R.id.textClientCompany)
         badgeOutcome = findViewById(R.id.badgeOutcome)
         badgeStage = findViewById(R.id.badgeStage)
         badgeMethod = findViewById(R.id.badgeMethod)
@@ -167,14 +167,6 @@ class InterviewDetailActivity : AppCompatActivity() {
         textJobTitle.text = interview.jobTitle
         textCompanyName.text = interview.companyName
 
-        // Client company
-        if (interview.clientCompany != null) {
-            textClientCompany.text = "via ${interview.clientCompany}"
-            textClientCompany.isVisible = true
-        } else {
-            textClientCompany.isVisible = false
-        }
-
         // Outcome badge
         badgeOutcome.text = interview.outcome.displayName
         badgeOutcome.setBackgroundColor(getOutcomeColor(interview.outcome))
@@ -182,9 +174,22 @@ class InterviewDetailActivity : AppCompatActivity() {
 
         // Hide action buttons if outcome is final (rejected or passed)
         val isOutcomeFinal = interview.outcome == InterviewOutcome.REJECTED ||
-                             interview.outcome == InterviewOutcome.PASSED
-        buttonReject.isVisible = !isOutcomeFinal
-        buttonForward.isVisible = !isOutcomeFinal
+                interview.outcome == InterviewOutcome.PASSED
+
+        // Default to invisible
+        buttonReject.isVisible = false
+        buttonForward.isVisible = false
+        buttonAwaiting.isVisible = false
+
+        lifecycleScope.launch {
+            val client = (application as InterviewApplication).flagsClient.await()
+
+            if (!isOutcomeFinal) {
+                buttonReject.isVisible = client.isEnabled("reject button")
+                buttonForward.isVisible = client.isEnabled("approve button")
+                buttonAwaiting.isVisible = client.isEnabled("awaiting button")
+            }
+        }
 
         // Stage badge
         badgeStage.text = interview.stage.displayName
@@ -343,7 +348,6 @@ class InterviewDetailActivity : AppCompatActivity() {
             putExtra(AddInterviewActivity.EXTRA_NEXT_STAGE_MODE, true)
             putExtra(AddInterviewActivity.EXTRA_PREVIOUS_INTERVIEW_ID, interview.id)
             putExtra(AddInterviewActivity.EXTRA_COMPANY_NAME, interview.companyName)
-            putExtra(AddInterviewActivity.EXTRA_CLIENT_COMPANY, interview.clientCompany)
             putExtra(AddInterviewActivity.EXTRA_JOB_TITLE, interview.jobTitle)
             putExtra(AddInterviewActivity.EXTRA_JOB_LISTING, interview.jobListing)
             putExtra(AddInterviewActivity.EXTRA_APPLICATION_DATE, interview.applicationDate.toString())
