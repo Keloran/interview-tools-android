@@ -79,13 +79,8 @@ class InterviewAdapter(
             // Job title
             textJobTitle.text = interview.jobTitle
 
-            // Company name with optional client company
-            val companyText = if (interview.clientCompany != null) {
-                "${interview.companyName} (via ${interview.clientCompany})"
-            } else {
-                interview.companyName
-            }
-            textCompanyName.text = companyText
+            // Company name
+            textCompanyName.text = interview.companyName
 
             // Interview date or deadline
             textInterviewDate.text = when {

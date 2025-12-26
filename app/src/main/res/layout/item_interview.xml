@@ -38,7 +38,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Awaiting"
+                android:text="@string/awaiting"
                 android:textSize="10sp"
                 android:textColor="@color/black" />
 
@@ -64,7 +64,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Next Stage"
+                android:text="@string/next_stage"
                 android:textSize="10sp"
                 android:textColor="@color/white" />
 
@@ -101,7 +101,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Reject"
+                android:text="@string/rejected"
                 android:textSize="10sp"
                 android:textColor="@color/white" />
 

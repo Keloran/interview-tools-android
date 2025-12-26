@@ -48,9 +48,9 @@ class SettingsActivity : AppCompatActivity() {
         setupViews()
         setupToolbar()
         setupClickListeners()
-        displayVersion()
         observeAuthState()
         observeSyncState()
+        displayVersion()
     }
 
     override fun onResume() {
