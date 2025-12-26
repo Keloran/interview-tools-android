@@ -187,7 +187,7 @@ class InterviewDetailActivity : AppCompatActivity() {
             if (!isOutcomeFinal) {
                 buttonReject.isVisible = client.isEnabled("reject button")
                 buttonForward.isVisible = client.isEnabled("approve button")
-                buttonAwaiting.isVisible = client.isEnabled("awaiting button")
+                buttonAwaiting.isVisible = interview.outcome != InterviewOutcome.AWAITING_RESPONSE && client.isEnabled("awaiting button")
             }
         }
 
