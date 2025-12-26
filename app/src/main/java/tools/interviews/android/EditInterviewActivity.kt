@@ -36,7 +36,6 @@ class EditInterviewActivity : AppCompatActivity() {
     private lateinit var buttonSave: MaterialButton
     private lateinit var dropdownStage: AutoCompleteTextView
     private lateinit var editCompanyName: AutoCompleteTextView
-    private lateinit var editClientCompany: TextInputEditText
     private lateinit var editJobTitle: TextInputEditText
     private lateinit var editJobListing: TextInputEditText
     private lateinit var sectionInterviewDetails: LinearLayout
@@ -142,7 +141,6 @@ class EditInterviewActivity : AppCompatActivity() {
         applicationDate = interview.applicationDate
 
         editCompanyName.setText(interview.companyName)
-        editClientCompany.setText(interview.clientCompany ?: "")
         editJobTitle.setText(interview.jobTitle)
         editJobListing.setText(interview.jobListing ?: "")
 
@@ -364,7 +362,6 @@ class EditInterviewActivity : AppCompatActivity() {
             id = interviewId,
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = editCompanyName.text.toString().trim(),
-            clientCompany = editClientCompany.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             stage = selectedStage,
             method = selectedMethod,
             outcome = selectedOutcome,

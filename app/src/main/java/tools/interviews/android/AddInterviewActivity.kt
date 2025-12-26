@@ -60,7 +60,6 @@ class AddInterviewActivity : AppCompatActivity() {
     private lateinit var buttonSave: MaterialButton
     private lateinit var dropdownStage: AutoCompleteTextView
     private lateinit var editCompanyName: AutoCompleteTextView
-    private lateinit var editClientCompany: TextInputEditText
     private lateinit var editJobTitle: TextInputEditText
     private lateinit var editJobListing: TextInputEditText
     private lateinit var sectionInterviewDetails: LinearLayout
@@ -162,9 +161,6 @@ class AddInterviewActivity : AppCompatActivity() {
             // Pre-fill all metadata from previous interview
             intent.getStringExtra(EXTRA_COMPANY_NAME)?.let {
                 editCompanyName.setText(it)
-            }
-            intent.getStringExtra(EXTRA_CLIENT_COMPANY)?.let {
-                editClientCompany.setText(it)
             }
             intent.getStringExtra(EXTRA_JOB_TITLE)?.let {
                 editJobTitle.setText(it)
