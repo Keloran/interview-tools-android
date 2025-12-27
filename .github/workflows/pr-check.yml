@@ -26,15 +26,15 @@ jobs:
 
       # Run lint checks
       - name: Run Lint
-        run: ./gradlew lintRelease
+        run: ./gradlew lintDebug
 
-      # Build release to verify it compiles
-      - name: Build Release Bundle
-        run: ./gradlew bundleRelease
+      # Build debug to verify it compiles (no signing required)
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
 
-      # Run unit tests if any exist
+      # Run unit tests
       - name: Run Unit Tests
-        run: ./gradlew testReleaseUnitTest
+        run: ./gradlew testDebugUnitTest
   automerge:
     runs-on: ubuntu-latest
     needs: build
