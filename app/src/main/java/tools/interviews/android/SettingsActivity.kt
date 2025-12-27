@@ -4,8 +4,11 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -15,6 +18,11 @@ import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.UpdateAvailability
 import kotlinx.coroutines.launch
 import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
@@ -38,19 +46,83 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var textVersion: TextView
 
     private lateinit var syncService: SyncService
+    private lateinit var appUpdateManager: AppUpdateManager
+
+    private val updateLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            Snackbar.make(textVersion, "Update installed", Snackbar.LENGTH_SHORT).show()
+        } else {
+            Log.w(TAG, "Update flow failed with result code: ${result.resultCode}")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
 
         syncService = (application as InterviewApplication).syncService
+        appUpdateManager = AppUpdateManagerFactory.create(this)
 
         setupViews()
         setupToolbar()
         setupClickListeners()
+        setupVersionDoubleTap()
         observeAuthState()
         observeSyncState()
         displayVersion()
+    }
+
+    @Suppress("ClickableViewAccessibility")
+    private fun setupVersionDoubleTap() {
+        lifecycleScope.launch {
+            val client = (application as InterviewApplication).flagsClient.await()
+
+            if (client.isEnabled("version check")) {
+                val gestureDetector =
+                    GestureDetector(this@SettingsActivity, object : GestureDetector.SimpleOnGestureListener() {
+                        override fun onDoubleTap(e: MotionEvent): Boolean {
+                            checkForUpdates()
+                            return true
+                        }
+                    })
+
+                textVersion.setOnTouchListener { _, event ->
+                    gestureDetector.onTouchEvent(event)
+                    true
+                }
+            }
+        }
+    }
+
+    private fun checkForUpdates() {
+        Snackbar.make(textVersion, "Checking for updates...", Snackbar.LENGTH_SHORT).show()
+
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
+            when (info.updateAvailability()) {
+                UpdateAvailability.UPDATE_AVAILABLE -> {
+                    if (info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)) {
+                        appUpdateManager.startUpdateFlowForResult(
+                            info,
+                            updateLauncher,
+                            AppUpdateOptions.defaultOptions(AppUpdateType.IMMEDIATE)
+                        )
+                    } else {
+                        Snackbar.make(textVersion, "Update available but not ready", Snackbar.LENGTH_SHORT).show()
+                    }
+                }
+                UpdateAvailability.UPDATE_NOT_AVAILABLE -> {
+                    Snackbar.make(textVersion, "You're on the latest version", Snackbar.LENGTH_SHORT).show()
+                }
+                else -> {
+                    Snackbar.make(textVersion, "Unable to check for updates", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }.addOnFailureListener { e ->
+            Log.e(TAG, "Failed to check for updates: ${e.message}", e)
+            Snackbar.make(textVersion, "Failed to check for updates", Snackbar.LENGTH_SHORT).show()
+        }
     }
 
     override fun onResume() {
@@ -136,7 +208,7 @@ class SettingsActivity : AppCompatActivity() {
             val packageInfo = packageManager.getPackageInfo(packageName, 0)
             textVersion.text = packageInfo.versionName
         } catch (e: Exception) {
-            textVersion.text = "1.0"
+            textVersion.text = "Unknown"
         }
     }
 
