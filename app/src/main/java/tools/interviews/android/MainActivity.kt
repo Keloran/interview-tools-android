@@ -25,6 +25,7 @@ import com.clerk.api.network.serialization.successOrNull
 import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.play.core.appupdate.AppUpdateManager
@@ -111,6 +112,7 @@ class MainActivity : AppCompatActivity() {
 
         appUpdateManager = AppUpdateManagerFactory.create(this)
         checkForUpdates()
+        checkAndShowWarning()
     }
 
     override fun onResume() {
@@ -526,5 +528,31 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+    }
+
+    private fun checkAndShowWarning() {
+        // Only show warning if there's a message configured
+        if (WarningConfig.WARNING_MESSAGE.isBlank()) {
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val client = (application as InterviewApplication).flagsClient.await()
+                if (client.isEnabled("warning")) {
+                    showWarningDialog()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to check warning flag: ${e.message}", e)
+            }
+        }
+    }
+
+    private fun showWarningDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(WarningConfig.WARNING_TITLE)
+            .setMessage(WarningConfig.WARNING_MESSAGE)
+            .setPositiveButton("OK", null)
+            .show()
     }
 }
