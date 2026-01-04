@@ -196,7 +196,7 @@
 
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Floating Action Button (hidden by default, shown when date selected) -->
+    <!-- Floating Action Button (always visible, defaults to today's date) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddInterview"
         android:layout_width="wrap_content"
@@ -205,8 +205,7 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="88dp"
         android:contentDescription="@string/add_interview"
-        android:visibility="gone"
-        app:srcCompat="@drawable/ic_add"
-        tools:visibility="visible" />
+        android:visibility="visible"
+        app:srcCompat="@drawable/ic_add" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
