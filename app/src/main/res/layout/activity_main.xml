@@ -34,12 +34,14 @@
 
         </com.google.android.material.appbar.MaterialToolbar>
 
-        <!-- Calendar View (fixed, doesn't scroll) -->
-        <CalendarView
+        <!-- Calendar View with pip indicators -->
+        <com.kizitonwose.calendar.view.CalendarView
             android:id="@+id/calendarView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:firstDayOfWeek="2" />
+            app:cv_dayViewResource="@layout/calendar_day_layout"
+            app:cv_monthHeaderResource="@layout/calendar_month_header"
+            app:cv_outDateStyle="endOfRow" />
 
         <!-- Divider -->
         <View

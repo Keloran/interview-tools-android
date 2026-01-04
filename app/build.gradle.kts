@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.window)
     implementation(libs.androidx.swiperefresh)
+    implementation(libs.kizitonwose.calendar.view)
     implementation(libs.app.update)
     implementation(libs.app.update.ktx)
 

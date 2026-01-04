@@ -6,12 +6,15 @@ import android.os.Bundle
 import android.util.Log
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
-import android.widget.CalendarView
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.kizitonwose.calendar.core.CalendarMonth
+import com.kizitonwose.calendar.view.CalendarView
+import com.kizitonwose.calendar.view.MonthHeaderFooterBinder
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
@@ -41,8 +44,14 @@ import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
+import tools.interviews.android.calendar.InterviewDayBinder
+import tools.interviews.android.calendar.InterviewPipCalculator
+import tools.interviews.android.calendar.MonthViewContainer
+import tools.interviews.android.calendar.PipDataMap
 import tools.interviews.android.util.FoldableOrientationManager
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 class MainActivity : AppCompatActivity() {
@@ -63,6 +72,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchBarContainer: com.google.android.material.card.MaterialCardView
     private lateinit var adapter: InterviewAdapter
     private lateinit var companySearchAdapter: ArrayAdapter<String>
+    private lateinit var dayBinder: InterviewDayBinder
+    private var pipData: PipDataMap = emptyMap()
 
     private lateinit var repository: InterviewRepository
     private lateinit var syncService: SyncService
@@ -247,8 +258,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupCalendar() {
-        calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
-            val newDate = LocalDate.of(year, month + 1, dayOfMonth)
+        // Create day binder with click handler
+        dayBinder = InterviewDayBinder(this) { clickedDate ->
             // Clear company filter and collapse search bar when selecting a date
             if (companyFilter != null) {
                 companyFilter = null
@@ -258,12 +269,34 @@ class MainActivity : AppCompatActivity() {
             if (searchBarContainer.isVisible) {
                 collapseSearchBar()
             }
-            if (selectedDate == newDate) {
+
+            if (selectedDate == clickedDate) {
                 clearDateSelection()
             } else {
-                selectedDate = newDate
+                selectedDate = clickedDate
+                dayBinder.selectedDate = clickedDate
+                calendarView.notifyCalendarChanged()
                 updateListHeader()
                 filterInterviews()
+            }
+        }
+
+        calendarView.dayBinder = dayBinder
+
+        // Setup calendar range (12 months back, 12 months forward)
+        val currentMonth = YearMonth.now()
+        val startMonth = currentMonth.minusMonths(12)
+        val endMonth = currentMonth.plusMonths(12)
+        val firstDayOfWeek = DayOfWeek.MONDAY
+
+        calendarView.setup(startMonth, endMonth, firstDayOfWeek)
+        calendarView.scrollToMonth(currentMonth)
+
+        // Setup month header binder for navigation
+        calendarView.monthHeaderBinder = object : MonthHeaderFooterBinder<MonthViewContainer> {
+            override fun create(view: View) = MonthViewContainer(view)
+            override fun bind(container: MonthViewContainer, data: CalendarMonth) {
+                container.bind(data, calendarView)
             }
         }
 
@@ -278,9 +311,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun clearDateSelection() {
         selectedDate = null
+        dayBinder.selectedDate = null
+        calendarView.notifyCalendarChanged()
+        calendarView.scrollToMonth(YearMonth.now())
         updateListHeader()
         filterInterviews()
-        calendarView.date = System.currentTimeMillis()
     }
 
     private fun setupRecyclerView() {
@@ -452,6 +487,10 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repository.allInterviews.collectLatest { interviews ->
                 allInterviews = interviews
+                // Compute pip data for calendar
+                pipData = InterviewPipCalculator.computePipData(interviews)
+                dayBinder.pipData = pipData
+                calendarView.notifyCalendarChanged()
                 filterInterviews()
             }
         }
@@ -474,7 +513,8 @@ class MainActivity : AppCompatActivity() {
         companyFilter = query
         // Clear date filter when searching for company
         selectedDate = null
-        calendarView.date = System.currentTimeMillis()
+        dayBinder.selectedDate = null
+        calendarView.notifyCalendarChanged()
         // Hide keyboard
         hideKeyboard()
         updateListHeader()
