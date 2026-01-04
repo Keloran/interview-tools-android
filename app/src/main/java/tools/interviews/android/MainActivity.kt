@@ -41,6 +41,7 @@ import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
+import tools.interviews.android.util.FoldableOrientationManager
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -56,7 +57,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fabAddInterview: FloatingActionButton
     private lateinit var editSearchCompany: AutoCompleteTextView
     private lateinit var buttonClearSearch: ImageButton
+    private lateinit var buttonCollapseSearch: ImageButton
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+    private lateinit var fabSearch: FloatingActionButton
+    private lateinit var searchBarContainer: com.google.android.material.card.MaterialCardView
     private lateinit var adapter: InterviewAdapter
     private lateinit var companySearchAdapter: ArrayAdapter<String>
 
@@ -69,6 +73,7 @@ class MainActivity : AppCompatActivity() {
     private var hasSyncedThisSession = false
 
     private lateinit var appUpdateManager: AppUpdateManager
+    private lateinit var foldableOrientationManager: FoldableOrientationManager
 
     private val updateLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -80,6 +85,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val KEY_COMPANY_FILTER = "company_filter"
     }
 
     private val dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
@@ -101,6 +107,15 @@ class MainActivity : AppCompatActivity() {
         repository = app.repository
         syncService = app.syncService
 
+        // Restore search filter state from configuration change (e.g., fold/unfold)
+        savedInstanceState?.getString(KEY_COMPANY_FILTER)?.let {
+            companyFilter = it
+        }
+
+        // Handle orientation based on fold state (candybar vs tablet mode)
+        foldableOrientationManager = FoldableOrientationManager(this)
+        foldableOrientationManager.attach(this)
+
         setupViews()
         setupToolbar()
         setupCalendar()
@@ -109,6 +124,9 @@ class MainActivity : AppCompatActivity() {
         setupSearch()
         observeData()
         observeAuthAndSync()
+
+        // Update UI to reflect restored state
+        updateListHeader()
 
         appUpdateManager = AppUpdateManagerFactory.create(this)
         checkForUpdates()
@@ -121,6 +139,11 @@ class MainActivity : AppCompatActivity() {
         if (!hasSyncedThisSession) {
             checkAndSync()
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_COMPANY_FILTER, companyFilter)
     }
 
     private fun observeAuthAndSync() {
@@ -181,7 +204,10 @@ class MainActivity : AppCompatActivity() {
         fabAddInterview = findViewById(R.id.fabAddInterview)
         editSearchCompany = findViewById(R.id.editSearchCompany)
         buttonClearSearch = findViewById(R.id.buttonClearSearch)
+        buttonCollapseSearch = findViewById(R.id.buttonCollapseSearch)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
+        fabSearch = findViewById(R.id.fabSearch)
+        searchBarContainer = findViewById(R.id.searchBarContainer)
 
         // Setup pull-to-refresh
         swipeRefreshLayout.setOnRefreshListener {
@@ -223,10 +249,14 @@ class MainActivity : AppCompatActivity() {
     private fun setupCalendar() {
         calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
             val newDate = LocalDate.of(year, month + 1, dayOfMonth)
-            // Clear company filter when selecting a date
+            // Clear company filter and collapse search bar when selecting a date
             if (companyFilter != null) {
                 companyFilter = null
                 editSearchCompany.text?.clear()
+            }
+            // Collapse search bar if it's open
+            if (searchBarContainer.isVisible) {
+                collapseSearchBar()
             }
             if (selectedDate == newDate) {
                 clearDateSelection()
@@ -379,6 +409,42 @@ class MainActivity : AppCompatActivity() {
         buttonClearSearch.setOnClickListener {
             clearCompanyFilter()
         }
+
+        // Search FAB - expand search bar when clicked
+        fabSearch.setOnClickListener {
+            expandSearchBar()
+        }
+
+        // Collapse search bar button (X on the right)
+        buttonCollapseSearch.setOnClickListener {
+            editSearchCompany.text?.clear()
+            companyFilter = null
+            collapseSearchBar()
+            updateListHeader()
+            filterInterviews()
+        }
+
+        // If there's a restored company filter, show the search bar expanded
+        if (companyFilter != null) {
+            searchBarContainer.isVisible = true
+            fabSearch.hide()
+            editSearchCompany.setText(companyFilter)
+        }
+    }
+
+    private fun expandSearchBar() {
+        fabSearch.hide()
+        searchBarContainer.isVisible = true
+        editSearchCompany.requestFocus()
+        // Show keyboard
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.showSoftInput(editSearchCompany, InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private fun collapseSearchBar() {
+        hideKeyboard()
+        searchBarContainer.isVisible = false
+        fabSearch.show()
     }
 
     private fun observeData() {
@@ -424,7 +490,7 @@ class MainActivity : AppCompatActivity() {
     private fun clearCompanyFilter() {
         companyFilter = null
         editSearchCompany.text?.clear()
-        editSearchCompany.clearFocus()
+        collapseSearchBar()
         updateListHeader()
         filterInterviews()
     }

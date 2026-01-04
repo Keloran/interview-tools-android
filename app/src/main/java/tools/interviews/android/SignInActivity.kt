@@ -24,11 +24,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.clerk.api.Clerk
 import com.clerk.ui.auth.AuthView
 import com.clerk.ui.userbutton.UserButton
+import tools.interviews.android.util.FoldableOrientationManager
 
 class SignInActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Handle orientation based on fold state (candybar vs tablet mode)
+        FoldableOrientationManager(this).attach(this)
+
         setContent {
             MaterialTheme {
                 Surface(

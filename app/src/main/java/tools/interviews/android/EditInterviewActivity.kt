@@ -23,6 +23,7 @@ import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewMethod
 import tools.interviews.android.model.InterviewOutcome
 import tools.interviews.android.model.InterviewStage
+import tools.interviews.android.util.FoldableOrientationManager
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -74,6 +75,9 @@ class EditInterviewActivity : AppCompatActivity() {
 
         repository = (application as InterviewApplication).repository
         interviewId = intent.getLongExtra(EXTRA_INTERVIEW_ID, -1)
+
+        // Handle orientation based on fold state (candybar vs tablet mode)
+        FoldableOrientationManager(this).attach(this)
 
         if (interviewId == -1L) {
             finish()

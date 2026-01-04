@@ -26,7 +26,9 @@ import com.google.android.play.core.install.model.UpdateAvailability
 import kotlinx.coroutines.launch
 import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
+import tools.interviews.android.util.FoldableOrientationManager
 import java.time.format.DateTimeFormatter
+import androidx.core.net.toUri
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -43,6 +45,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var itemSyncNow: LinearLayout
     private lateinit var textLastSynced: TextView
     private lateinit var itemWebsite: LinearLayout
+    private lateinit var itemGithub: LinearLayout
     private lateinit var textVersion: TextView
 
     private lateinit var syncService: SyncService
@@ -64,6 +67,9 @@ class SettingsActivity : AppCompatActivity() {
 
         syncService = (application as InterviewApplication).syncService
         appUpdateManager = AppUpdateManagerFactory.create(this)
+
+        // Handle orientation based on fold state (candybar vs tablet mode)
+        FoldableOrientationManager(this).attach(this)
 
         setupViews()
         setupToolbar()
@@ -140,6 +146,7 @@ class SettingsActivity : AppCompatActivity() {
         itemSyncNow = findViewById(R.id.itemSyncNow)
         textLastSynced = findViewById(R.id.textLastSynced)
         itemWebsite = findViewById(R.id.itemWebsite)
+        itemGithub = findViewById(R.id.itemGithub)
         textVersion = findViewById(R.id.textVersion)
     }
 
@@ -170,7 +177,13 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         itemWebsite.setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://interviews.tools"))
+            val intent = Intent(Intent.ACTION_VIEW, "https://interviews.tools".toUri())
+            startActivity(intent)
+        }
+
+        itemGithub.setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW,
+                "https://github.com/keloran/interview-tools-android".toUri())
             startActivity(intent)
         }
     }

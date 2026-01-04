@@ -30,6 +30,7 @@ import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewMethod
 import tools.interviews.android.model.InterviewOutcome
 import tools.interviews.android.model.InterviewStage
+import tools.interviews.android.util.FoldableOrientationManager
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -97,6 +98,9 @@ class AddInterviewActivity : AppCompatActivity() {
         val app = application as InterviewApplication
         repository = app.repository
         syncService = app.syncService
+
+        // Handle orientation based on fold state (candybar vs tablet mode)
+        FoldableOrientationManager(this).attach(this)
 
         setupViews()
         setupToolbar()

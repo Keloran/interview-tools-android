@@ -2,6 +2,7 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -56,11 +57,13 @@
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
                         android:padding="16dp"
-                        android:background="?attr/selectableItemBackground">
+                        android:background="?attr/selectableItemBackground"
+                        tools:ignore="UselessParent">
 
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
+                            android:contentDescription="@string/user_icon"
                             android:src="@drawable/ic_person"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -93,6 +96,10 @@
                             style="@style/Widget.Material3.Button.TonalButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
                             android:text="@string/sign_in" />
 
                     </LinearLayout>
@@ -143,6 +150,7 @@
                             <ImageView
                                 android:layout_width="24dp"
                                 android:layout_height="24dp"
+                                android:contentDescription="@string/force_sync"
                                 android:src="@drawable/ic_sync"
                                 app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -173,6 +181,7 @@
                             <ImageView
                                 android:layout_width="24dp"
                                 android:layout_height="24dp"
+                                android:contentDescription="@string/sync_icon"
                                 android:src="@drawable/ic_schedule"
                                 app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -243,6 +252,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
+                            android:contentDescription="@string/web_icon"
                             android:src="@drawable/ic_web"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -251,13 +261,54 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="16dp"
-                            android:text="Interviews.tools"
+                            android:text="@string/interviews_tools"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:textColor="?attr/colorPrimary" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
+                            android:contentDescription="@string/open_in_browser"
+                            android:src="@drawable/ic_open_in_new"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginStart="56dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                    <LinearLayout
+                        android:id="@+id/itemGithub"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:padding="16dp"
+                        android:background="?attr/selectableItemBackground">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:contentDescription="@string/web_icon"
+                            android:src="@drawable/ic_web"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="16dp"
+                            android:text="@string/github"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorPrimary" />
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="@string/open_in_browser"
                             android:src="@drawable/ic_open_in_new"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -280,6 +331,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
+                            android:contentDescription="@string/info_icon"
                             android:src="@drawable/ic_info"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -300,7 +352,7 @@
                                 android:id="@+id/textVersion"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="1.0"
+                                android:text="@string/default_version"
                                 android:textAppearance="?attr/textAppearanceBodySmall"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
 

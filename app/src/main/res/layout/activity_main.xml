@@ -143,15 +143,17 @@
 
     </LinearLayout>
 
-    <!-- Bottom Search Bar -->
+    <!-- Bottom Search Bar (initially hidden, expands from search FAB) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/searchBarContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:layout_margin="16dp"
+        android:visibility="gone"
         app:cardElevation="4dp"
-        app:cardCornerRadius="28dp">
+        app:cardCornerRadius="28dp"
+        tools:visibility="visible">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -192,11 +194,32 @@
                 app:tint="?attr/colorOnSurfaceVariant"
                 tools:visibility="visible" />
 
+            <ImageButton
+                android:id="@+id/buttonCollapseSearch"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/close_search"
+                android:src="@drawable/ic_close"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
         </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Floating Action Button (always visible, defaults to today's date) -->
+    <!-- Search FAB (at bottom, expands to search bar) -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabSearch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@string/search_companies"
+        app:fabSize="normal"
+        app:srcCompat="@drawable/ic_search" />
+
+    <!-- Floating Action Button (above search FAB) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddInterview"
         android:layout_width="wrap_content"
