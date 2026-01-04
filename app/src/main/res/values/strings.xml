@@ -44,4 +44,13 @@
     <string name="about">About</string>
     <string name="version">Version</string>
     <string name="awaiting">Awaiting</string>
+    <string name="interviews_tools">Interviews.tools</string>
+    <string name="open_in_browser">Open in Browser</string>
+    <string name="web_icon">Web Icon</string>
+    <string name="user_icon">User Icon</string>
+    <string name="sync_icon">Sync Icon</string>
+    <string name="info_icon">Info Icon</string>
+    <string name="default_version">1.0</string>
+    <string name="force_sync">Force Sync</string>
+    <string name="github">GitHub Repository</string>
 </resources>
