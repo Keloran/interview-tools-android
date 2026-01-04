@@ -17,6 +17,7 @@ import com.kizitonwose.calendar.view.CalendarView
 import com.kizitonwose.calendar.view.MonthHeaderFooterBinder
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
@@ -499,17 +500,19 @@ class MainActivity : AppCompatActivity() {
                 // Compute pip data for calendar
                 pipData = InterviewPipCalculator.computePipData(interviews)
                 dayBinder.pipData = pipData
-                // Notify calendar to refresh - use postDelayed to ensure tablet layout is ready
                 Log.d(TAG, "Pip data computed: ${pipData.size} dates with pips")
+
+                // Notify calendar after layout is complete (fixes tablet pip rendering)
+                // doOnLayout ensures the callback runs after the view hierarchy is fully laid out
+                calendarView.doOnLayout {
+                    Log.d(TAG, "Notifying calendar (doOnLayout)")
+                    calendarView.notifyCalendarChanged()
+                }
+                // Also post for immediate refresh on already-laid-out views
                 calendarView.post {
                     Log.d(TAG, "Notifying calendar (post)")
                     calendarView.notifyCalendarChanged()
                 }
-                // Additional delayed refresh for tablet layout timing issues
-                calendarView.postDelayed({
-                    Log.d(TAG, "Notifying calendar (delayed)")
-                    calendarView.notifyCalendarChanged()
-                }, 100)
                 filterInterviews()
             }
         }

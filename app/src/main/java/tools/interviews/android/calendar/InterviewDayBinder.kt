@@ -86,7 +86,9 @@ class InterviewDayBinder(
         container.removeAllViews()
 
         if (pipData != null) {
-            android.util.Log.d("InterviewDayBinder", "Rendering ${pipData.pips.size} pips for ${pipData.date}")
+            val density = context.resources.displayMetrics.density
+            val pipSize = (6 * density).toInt()
+            android.util.Log.d("InterviewDayBinder", "Rendering ${pipData.pips.size} pips for ${pipData.date}, density=$density, pipSize=$pipSize, container=${container.width}x${container.height}")
         }
 
         pipData?.pips?.forEach { outcome ->
@@ -102,6 +104,13 @@ class InterviewDayBinder(
                 }
             }
             container.addView(pip)
+        }
+
+        // Force layout recalculation - needed for tablet multi-panel layout
+        if (pipData != null && pipData.pips.isNotEmpty()) {
+            container.requestLayout()
+            container.invalidate()
+            android.util.Log.d("InterviewDayBinder", "After adding pips: childCount=${container.childCount}, visibility=${container.visibility}")
         }
     }
 }
