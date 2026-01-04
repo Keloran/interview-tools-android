@@ -66,9 +66,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fabAddInterview: FloatingActionButton
     private lateinit var editSearchCompany: AutoCompleteTextView
     private lateinit var buttonClearSearch: ImageButton
-    private lateinit var buttonCollapseSearch: ImageButton
+    private var buttonCollapseSearch: ImageButton? = null  // Not present in tablet layout
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
-    private lateinit var fabSearch: FloatingActionButton
+    private var fabSearch: FloatingActionButton? = null  // Not present in tablet layout
     private lateinit var searchBarContainer: com.google.android.material.card.MaterialCardView
     private lateinit var adapter: InterviewAdapter
     private lateinit var companySearchAdapter: ArrayAdapter<String>
@@ -215,9 +215,9 @@ class MainActivity : AppCompatActivity() {
         fabAddInterview = findViewById(R.id.fabAddInterview)
         editSearchCompany = findViewById(R.id.editSearchCompany)
         buttonClearSearch = findViewById(R.id.buttonClearSearch)
-        buttonCollapseSearch = findViewById(R.id.buttonCollapseSearch)
+        buttonCollapseSearch = findViewById(R.id.buttonCollapseSearch)  // May be null on tablet
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
-        fabSearch = findViewById(R.id.fabSearch)
+        fabSearch = findViewById(R.id.fabSearch)  // May be null on tablet
         searchBarContainer = findViewById(R.id.searchBarContainer)
 
         // Setup pull-to-refresh
@@ -265,8 +265,8 @@ class MainActivity : AppCompatActivity() {
                 companyFilter = null
                 editSearchCompany.text?.clear()
             }
-            // Collapse search bar if it's open
-            if (searchBarContainer.isVisible) {
+            // Collapse search bar if it's open (phone layout only)
+            if (fabSearch != null && searchBarContainer.isVisible) {
                 collapseSearchBar()
             }
 
@@ -445,13 +445,13 @@ class MainActivity : AppCompatActivity() {
             clearCompanyFilter()
         }
 
-        // Search FAB - expand search bar when clicked
-        fabSearch.setOnClickListener {
+        // Search FAB - expand search bar when clicked (phone layout only)
+        fabSearch?.setOnClickListener {
             expandSearchBar()
         }
 
-        // Collapse search bar button (X on the right)
-        buttonCollapseSearch.setOnClickListener {
+        // Collapse search bar button (X on the right, phone layout only)
+        buttonCollapseSearch?.setOnClickListener {
             editSearchCompany.text?.clear()
             companyFilter = null
             collapseSearchBar()
@@ -459,17 +459,22 @@ class MainActivity : AppCompatActivity() {
             filterInterviews()
         }
 
-        // If there's a restored company filter, show the search bar expanded
+        // If there's a restored company filter, show the search bar expanded (phone layout only)
         if (companyFilter != null) {
-            searchBarContainer.isVisible = true
-            fabSearch.hide()
+            if (fabSearch != null) {
+                searchBarContainer.isVisible = true
+                fabSearch?.hide()
+            }
             editSearchCompany.setText(companyFilter)
         }
     }
 
     private fun expandSearchBar() {
-        fabSearch.hide()
-        searchBarContainer.isVisible = true
+        // Only manipulate visibility on phone layout (where fabSearch exists)
+        if (fabSearch != null) {
+            fabSearch?.hide()
+            searchBarContainer.isVisible = true
+        }
         editSearchCompany.requestFocus()
         // Show keyboard
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -478,8 +483,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun collapseSearchBar() {
         hideKeyboard()
-        searchBarContainer.isVisible = false
-        fabSearch.show()
+        // Only manipulate visibility on phone layout (where fabSearch exists)
+        if (fabSearch != null) {
+            searchBarContainer.isVisible = false
+            fabSearch?.show()
+        }
     }
 
     private fun observeData() {
