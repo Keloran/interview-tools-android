@@ -82,6 +82,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val KEY_COMPANY_FILTER = "company_filter"
     }
 
     private val dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
@@ -103,6 +104,11 @@ class MainActivity : AppCompatActivity() {
         repository = app.repository
         syncService = app.syncService
 
+        // Restore search filter state from configuration change (e.g., fold/unfold)
+        savedInstanceState?.getString(KEY_COMPANY_FILTER)?.let {
+            companyFilter = it
+        }
+
         // Handle orientation based on fold state (candybar vs tablet mode)
         foldableOrientationManager = FoldableOrientationManager(this)
         foldableOrientationManager.attach(this)
@@ -116,6 +122,9 @@ class MainActivity : AppCompatActivity() {
         observeData()
         observeAuthAndSync()
 
+        // Update UI to reflect restored state
+        updateListHeader()
+
         appUpdateManager = AppUpdateManagerFactory.create(this)
         checkForUpdates()
         checkAndShowWarning()
@@ -127,6 +136,11 @@ class MainActivity : AppCompatActivity() {
         if (!hasSyncedThisSession) {
             checkAndSync()
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_COMPANY_FILTER, companyFilter)
     }
 
     private fun observeAuthAndSync() {
