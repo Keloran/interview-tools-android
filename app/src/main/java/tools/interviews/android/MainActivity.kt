@@ -58,6 +58,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var editSearchCompany: AutoCompleteTextView
     private lateinit var buttonClearSearch: ImageButton
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+    private lateinit var fabSearch: FloatingActionButton
+    private lateinit var searchBarContainer: com.google.android.material.card.MaterialCardView
     private lateinit var adapter: InterviewAdapter
     private lateinit var companySearchAdapter: ArrayAdapter<String>
 
@@ -202,6 +204,8 @@ class MainActivity : AppCompatActivity() {
         editSearchCompany = findViewById(R.id.editSearchCompany)
         buttonClearSearch = findViewById(R.id.buttonClearSearch)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
+        fabSearch = findViewById(R.id.fabSearch)
+        searchBarContainer = findViewById(R.id.searchBarContainer)
 
         // Setup pull-to-refresh
         swipeRefreshLayout.setOnRefreshListener {
@@ -243,10 +247,14 @@ class MainActivity : AppCompatActivity() {
     private fun setupCalendar() {
         calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
             val newDate = LocalDate.of(year, month + 1, dayOfMonth)
-            // Clear company filter when selecting a date
+            // Clear company filter and collapse search bar when selecting a date
             if (companyFilter != null) {
                 companyFilter = null
                 editSearchCompany.text?.clear()
+            }
+            // Collapse search bar if it's open
+            if (searchBarContainer.isVisible) {
+                collapseSearchBar()
             }
             if (selectedDate == newDate) {
                 clearDateSelection()
@@ -399,6 +407,33 @@ class MainActivity : AppCompatActivity() {
         buttonClearSearch.setOnClickListener {
             clearCompanyFilter()
         }
+
+        // Search FAB - expand search bar when clicked
+        fabSearch.setOnClickListener {
+            expandSearchBar()
+        }
+
+        // If there's a restored company filter, show the search bar expanded
+        if (companyFilter != null) {
+            searchBarContainer.isVisible = true
+            fabSearch.hide()
+            editSearchCompany.setText(companyFilter)
+        }
+    }
+
+    private fun expandSearchBar() {
+        fabSearch.hide()
+        searchBarContainer.isVisible = true
+        editSearchCompany.requestFocus()
+        // Show keyboard
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.showSoftInput(editSearchCompany, InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private fun collapseSearchBar() {
+        hideKeyboard()
+        searchBarContainer.isVisible = false
+        fabSearch.show()
     }
 
     private fun observeData() {
@@ -444,7 +479,7 @@ class MainActivity : AppCompatActivity() {
     private fun clearCompanyFilter() {
         companyFilter = null
         editSearchCompany.text?.clear()
-        editSearchCompany.clearFocus()
+        collapseSearchBar()
         updateListHeader()
         filterInterviews()
     }
