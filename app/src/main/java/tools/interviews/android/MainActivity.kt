@@ -498,7 +498,8 @@ class MainActivity : AppCompatActivity() {
                 // Compute pip data for calendar
                 pipData = InterviewPipCalculator.computePipData(interviews)
                 dayBinder.pipData = pipData
-                calendarView.notifyCalendarChanged()
+                // Post to ensure calendar refreshes after layout is complete
+                calendarView.post { calendarView.notifyCalendarChanged() }
                 filterInterviews()
             }
         }
