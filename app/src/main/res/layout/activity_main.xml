@@ -194,6 +194,15 @@
                 app:tint="?attr/colorOnSurfaceVariant"
                 tools:visibility="visible" />
 
+            <ImageButton
+                android:id="@+id/buttonCollapseSearch"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/close_search"
+                android:src="@drawable/ic_close"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
         </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>

@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fabAddInterview: FloatingActionButton
     private lateinit var editSearchCompany: AutoCompleteTextView
     private lateinit var buttonClearSearch: ImageButton
+    private lateinit var buttonCollapseSearch: ImageButton
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var fabSearch: FloatingActionButton
     private lateinit var searchBarContainer: com.google.android.material.card.MaterialCardView
@@ -203,6 +204,7 @@ class MainActivity : AppCompatActivity() {
         fabAddInterview = findViewById(R.id.fabAddInterview)
         editSearchCompany = findViewById(R.id.editSearchCompany)
         buttonClearSearch = findViewById(R.id.buttonClearSearch)
+        buttonCollapseSearch = findViewById(R.id.buttonCollapseSearch)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
         fabSearch = findViewById(R.id.fabSearch)
         searchBarContainer = findViewById(R.id.searchBarContainer)
@@ -411,6 +413,15 @@ class MainActivity : AppCompatActivity() {
         // Search FAB - expand search bar when clicked
         fabSearch.setOnClickListener {
             expandSearchBar()
+        }
+
+        // Collapse search bar button (X on the right)
+        buttonCollapseSearch.setOnClickListener {
+            editSearchCompany.text?.clear()
+            companyFilter = null
+            collapseSearchBar()
+            updateListHeader()
+            filterInterviews()
         }
 
         // If there's a restored company filter, show the search bar expanded

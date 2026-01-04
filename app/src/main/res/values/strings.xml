@@ -17,6 +17,7 @@
     <string name="no_interviews_scheduled">No Interviews Scheduled</string>
     <string name="search_companies">Search companies...</string>
     <string name="clear_search">Clear search</string>
+    <string name="close_search">Close search</string>
     <string name="add_interview">Add Interview</string>
     <string name="save">Save</string>
     <string name="interview_stage">Interview Stage</string>
