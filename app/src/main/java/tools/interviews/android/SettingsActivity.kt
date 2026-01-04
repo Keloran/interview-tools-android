@@ -26,6 +26,7 @@ import com.google.android.play.core.install.model.UpdateAvailability
 import kotlinx.coroutines.launch
 import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
+import tools.interviews.android.util.FoldableOrientationManager
 import java.time.format.DateTimeFormatter
 
 class SettingsActivity : AppCompatActivity() {
@@ -64,6 +65,9 @@ class SettingsActivity : AppCompatActivity() {
 
         syncService = (application as InterviewApplication).syncService
         appUpdateManager = AppUpdateManagerFactory.create(this)
+
+        // Handle orientation based on fold state (candybar vs tablet mode)
+        FoldableOrientationManager(this).attach(this)
 
         setupViews()
         setupToolbar()

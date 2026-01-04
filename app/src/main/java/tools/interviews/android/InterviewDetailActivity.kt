@@ -25,6 +25,7 @@ import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
 import tools.interviews.android.model.InterviewStage
+import tools.interviews.android.util.FoldableOrientationManager
 import java.time.format.DateTimeFormatter
 
 class InterviewDetailActivity : AppCompatActivity() {
@@ -85,6 +86,9 @@ class InterviewDetailActivity : AppCompatActivity() {
         repository = app.repository
         syncService = app.syncService
         interviewId = intent.getLongExtra(EXTRA_INTERVIEW_ID, -1)
+
+        // Handle orientation based on fold state (candybar vs tablet mode)
+        FoldableOrientationManager(this).attach(this)
 
         if (interviewId == -1L) {
             finish()

@@ -41,6 +41,7 @@ import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
+import tools.interviews.android.util.FoldableOrientationManager
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -69,6 +70,7 @@ class MainActivity : AppCompatActivity() {
     private var hasSyncedThisSession = false
 
     private lateinit var appUpdateManager: AppUpdateManager
+    private lateinit var foldableOrientationManager: FoldableOrientationManager
 
     private val updateLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -100,6 +102,10 @@ class MainActivity : AppCompatActivity() {
         val app = application as InterviewApplication
         repository = app.repository
         syncService = app.syncService
+
+        // Handle orientation based on fold state (candybar vs tablet mode)
+        foldableOrientationManager = FoldableOrientationManager(this)
+        foldableOrientationManager.attach(this)
 
         setupViews()
         setupToolbar()
