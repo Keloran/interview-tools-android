@@ -4,11 +4,14 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.isVisible
+import com.google.android.material.button.MaterialButton
 import com.kizitonwose.calendar.core.CalendarMonth
 import com.kizitonwose.calendar.view.CalendarView
 import com.kizitonwose.calendar.view.ViewContainer
 import tools.interviews.android.R
 import java.time.DayOfWeek
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -17,12 +20,21 @@ class MonthViewContainer(view: View) : ViewContainer(view) {
     private val monthYearText: TextView = view.findViewById(R.id.monthYearText)
     private val buttonPrevMonth: ImageButton = view.findViewById(R.id.buttonPrevMonth)
     private val buttonNextMonth: ImageButton = view.findViewById(R.id.buttonNextMonth)
+    private val buttonToday: MaterialButton = view.findViewById(R.id.buttonToday)
     private val weekDaysContainer: LinearLayout = view.findViewById(R.id.weekDaysContainer)
 
     private val monthYearFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
 
     fun bind(data: CalendarMonth, calendarView: CalendarView) {
         monthYearText.text = data.yearMonth.format(monthYearFormatter)
+
+        // Show "Today" button only when not viewing the current month
+        val currentMonth = YearMonth.now()
+        buttonToday.isVisible = data.yearMonth != currentMonth
+
+        buttonToday.setOnClickListener {
+            calendarView.smoothScrollToMonth(currentMonth)
+        }
 
         buttonPrevMonth.setOnClickListener {
             calendarView.findFirstVisibleMonth()?.let {
