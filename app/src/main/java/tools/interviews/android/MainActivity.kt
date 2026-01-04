@@ -330,9 +330,8 @@ class MainActivity : AppCompatActivity() {
     private fun setupFab() {
         fabAddInterview.setOnClickListener {
             val intent = Intent(this, AddInterviewActivity::class.java)
-            selectedDate?.let {
-                intent.putExtra(AddInterviewActivity.EXTRA_SELECTED_DATE, it.toString())
-            }
+            val dateToUse = selectedDate ?: LocalDate.now()
+            intent.putExtra(AddInterviewActivity.EXTRA_SELECTED_DATE, dateToUse.toString())
             intent.putStringArrayListExtra(
                 AddInterviewActivity.EXTRA_COMPANIES,
                 ArrayList(allCompanies)
@@ -448,7 +447,7 @@ class MainActivity : AppCompatActivity() {
                 textListHeader.text = "Upcoming Interviews"
                 buttonClearDate.isVisible = false
                 buttonClearDate.text = "Clear"
-                fabAddInterview.hide()
+                fabAddInterview.show()
             }
         }
     }
