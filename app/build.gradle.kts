@@ -30,7 +30,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 1
-        versionName = "1.0.9"
+        versionName = "1.0.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.window)
     implementation(libs.androidx.swiperefresh)
+    implementation(libs.kizitonwose.calendar.view)
     implementation(libs.app.update)
     implementation(libs.app.update.ktx)
 

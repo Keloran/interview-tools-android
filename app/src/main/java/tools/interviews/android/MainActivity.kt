@@ -6,14 +6,18 @@ import android.os.Bundle
 import android.util.Log
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
-import android.widget.CalendarView
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.kizitonwose.calendar.core.CalendarMonth
+import com.kizitonwose.calendar.view.CalendarView
+import com.kizitonwose.calendar.view.MonthHeaderFooterBinder
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
@@ -41,8 +45,14 @@ import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
+import tools.interviews.android.calendar.InterviewDayBinder
+import tools.interviews.android.calendar.InterviewPipCalculator
+import tools.interviews.android.calendar.MonthViewContainer
+import tools.interviews.android.calendar.PipDataMap
 import tools.interviews.android.util.FoldableOrientationManager
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 class MainActivity : AppCompatActivity() {
@@ -57,12 +67,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fabAddInterview: FloatingActionButton
     private lateinit var editSearchCompany: AutoCompleteTextView
     private lateinit var buttonClearSearch: ImageButton
-    private lateinit var buttonCollapseSearch: ImageButton
+    private var buttonCollapseSearch: ImageButton? = null  // Not present in tablet layout
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
-    private lateinit var fabSearch: FloatingActionButton
+    private var fabSearch: FloatingActionButton? = null  // Not present in tablet layout
     private lateinit var searchBarContainer: com.google.android.material.card.MaterialCardView
     private lateinit var adapter: InterviewAdapter
     private lateinit var companySearchAdapter: ArrayAdapter<String>
+    private lateinit var dayBinder: InterviewDayBinder
+    private var pipData: PipDataMap = emptyMap()
 
     private lateinit var repository: InterviewRepository
     private lateinit var syncService: SyncService
@@ -204,9 +216,9 @@ class MainActivity : AppCompatActivity() {
         fabAddInterview = findViewById(R.id.fabAddInterview)
         editSearchCompany = findViewById(R.id.editSearchCompany)
         buttonClearSearch = findViewById(R.id.buttonClearSearch)
-        buttonCollapseSearch = findViewById(R.id.buttonCollapseSearch)
+        buttonCollapseSearch = findViewById(R.id.buttonCollapseSearch)  // May be null on tablet
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
-        fabSearch = findViewById(R.id.fabSearch)
+        fabSearch = findViewById(R.id.fabSearch)  // May be null on tablet
         searchBarContainer = findViewById(R.id.searchBarContainer)
 
         // Setup pull-to-refresh
@@ -247,23 +259,45 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupCalendar() {
-        calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
-            val newDate = LocalDate.of(year, month + 1, dayOfMonth)
+        // Create day binder with click handler
+        dayBinder = InterviewDayBinder(this) { clickedDate ->
             // Clear company filter and collapse search bar when selecting a date
             if (companyFilter != null) {
                 companyFilter = null
                 editSearchCompany.text?.clear()
             }
-            // Collapse search bar if it's open
-            if (searchBarContainer.isVisible) {
+            // Collapse search bar if it's open (phone layout only)
+            if (fabSearch != null && searchBarContainer.isVisible) {
                 collapseSearchBar()
             }
-            if (selectedDate == newDate) {
+
+            if (selectedDate == clickedDate) {
                 clearDateSelection()
             } else {
-                selectedDate = newDate
+                selectedDate = clickedDate
+                dayBinder.selectedDate = clickedDate
+                calendarView.notifyCalendarChanged()
                 updateListHeader()
                 filterInterviews()
+            }
+        }
+
+        calendarView.dayBinder = dayBinder
+
+        // Setup calendar range (12 months back, 12 months forward)
+        val currentMonth = YearMonth.now()
+        val startMonth = currentMonth.minusMonths(12)
+        val endMonth = currentMonth.plusMonths(12)
+        val firstDayOfWeek = DayOfWeek.MONDAY
+
+        calendarView.setup(startMonth, endMonth, firstDayOfWeek)
+        calendarView.scrollToMonth(currentMonth)
+
+        // Setup month header binder for navigation
+        calendarView.monthHeaderBinder = object : MonthHeaderFooterBinder<MonthViewContainer> {
+            override fun create(view: View) = MonthViewContainer(view)
+            override fun bind(container: MonthViewContainer, data: CalendarMonth) {
+                container.bind(data, calendarView)
             }
         }
 
@@ -274,13 +308,16 @@ class MainActivity : AppCompatActivity() {
                 clearDateSelection()
             }
         }
+
     }
 
     private fun clearDateSelection() {
         selectedDate = null
+        dayBinder.selectedDate = null
+        calendarView.notifyCalendarChanged()
+        calendarView.scrollToMonth(YearMonth.now())
         updateListHeader()
         filterInterviews()
-        calendarView.date = System.currentTimeMillis()
     }
 
     private fun setupRecyclerView() {
@@ -410,13 +447,13 @@ class MainActivity : AppCompatActivity() {
             clearCompanyFilter()
         }
 
-        // Search FAB - expand search bar when clicked
-        fabSearch.setOnClickListener {
+        // Search FAB - expand search bar when clicked (phone layout only)
+        fabSearch?.setOnClickListener {
             expandSearchBar()
         }
 
-        // Collapse search bar button (X on the right)
-        buttonCollapseSearch.setOnClickListener {
+        // Collapse search bar button (X on the right, phone layout only)
+        buttonCollapseSearch?.setOnClickListener {
             editSearchCompany.text?.clear()
             companyFilter = null
             collapseSearchBar()
@@ -424,17 +461,22 @@ class MainActivity : AppCompatActivity() {
             filterInterviews()
         }
 
-        // If there's a restored company filter, show the search bar expanded
+        // If there's a restored company filter, show the search bar expanded (phone layout only)
         if (companyFilter != null) {
-            searchBarContainer.isVisible = true
-            fabSearch.hide()
+            if (fabSearch != null) {
+                searchBarContainer.isVisible = true
+                fabSearch?.hide()
+            }
             editSearchCompany.setText(companyFilter)
         }
     }
 
     private fun expandSearchBar() {
-        fabSearch.hide()
-        searchBarContainer.isVisible = true
+        // Only manipulate visibility on phone layout (where fabSearch exists)
+        if (fabSearch != null) {
+            fabSearch?.hide()
+            searchBarContainer.isVisible = true
+        }
         editSearchCompany.requestFocus()
         // Show keyboard
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -443,8 +485,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun collapseSearchBar() {
         hideKeyboard()
-        searchBarContainer.isVisible = false
-        fabSearch.show()
+        // Only manipulate visibility on phone layout (where fabSearch exists)
+        if (fabSearch != null) {
+            searchBarContainer.isVisible = false
+            fabSearch?.show()
+        }
     }
 
     private fun observeData() {
@@ -452,6 +497,22 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repository.allInterviews.collectLatest { interviews ->
                 allInterviews = interviews
+                // Compute pip data for calendar
+                pipData = InterviewPipCalculator.computePipData(interviews)
+                dayBinder.pipData = pipData
+                Log.d(TAG, "Pip data computed: ${pipData.size} dates with pips")
+
+                // Notify calendar after layout is complete (fixes tablet pip rendering)
+                // doOnLayout ensures the callback runs after the view hierarchy is fully laid out
+                calendarView.doOnLayout {
+                    Log.d(TAG, "Notifying calendar (doOnLayout)")
+                    calendarView.notifyCalendarChanged()
+                }
+                // Also post for immediate refresh on already-laid-out views
+                calendarView.post {
+                    Log.d(TAG, "Notifying calendar (post)")
+                    calendarView.notifyCalendarChanged()
+                }
                 filterInterviews()
             }
         }
@@ -474,7 +535,8 @@ class MainActivity : AppCompatActivity() {
         companyFilter = query
         // Clear date filter when searching for company
         selectedDate = null
-        calendarView.date = System.currentTimeMillis()
+        dayBinder.selectedDate = null
+        calendarView.notifyCalendarChanged()
         // Hide keyboard
         hideKeyboard()
         updateListHeader()

@@ -109,11 +109,13 @@
                 android:orientation="vertical"
                 android:background="?attr/colorSurfaceVariant">
 
-                <CalendarView
+                <com.kizitonwose.calendar.view.CalendarView
                     android:id="@+id/calendarView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:maxDate="12/31/2030" />
+                    app:cv_dayViewResource="@layout/calendar_day_layout"
+                    app:cv_monthHeaderResource="@layout/calendar_month_header"
+                    app:cv_outDateStyle="endOfRow" />
 
                 <!-- Spacer below calendar -->
                 <View
