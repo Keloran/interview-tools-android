@@ -85,6 +85,10 @@ class InterviewDayBinder(
     private fun renderPips(container: LinearLayout, pipData: CalendarPipData?) {
         container.removeAllViews()
 
+        if (pipData != null) {
+            android.util.Log.d("InterviewDayBinder", "Rendering ${pipData.pips.size} pips for ${pipData.date}")
+        }
+
         pipData?.pips?.forEach { outcome ->
             val pip = View(context).apply {
                 val size = (6 * context.resources.displayMetrics.density).toInt()

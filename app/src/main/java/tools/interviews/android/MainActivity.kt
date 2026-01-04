@@ -307,6 +307,7 @@ class MainActivity : AppCompatActivity() {
                 clearDateSelection()
             }
         }
+
     }
 
     private fun clearDateSelection() {
@@ -498,8 +499,17 @@ class MainActivity : AppCompatActivity() {
                 // Compute pip data for calendar
                 pipData = InterviewPipCalculator.computePipData(interviews)
                 dayBinder.pipData = pipData
-                // Post to ensure calendar refreshes after layout is complete
-                calendarView.post { calendarView.notifyCalendarChanged() }
+                // Notify calendar to refresh - use postDelayed to ensure tablet layout is ready
+                Log.d(TAG, "Pip data computed: ${pipData.size} dates with pips")
+                calendarView.post {
+                    Log.d(TAG, "Notifying calendar (post)")
+                    calendarView.notifyCalendarChanged()
+                }
+                // Additional delayed refresh for tablet layout timing issues
+                calendarView.postDelayed({
+                    Log.d(TAG, "Notifying calendar (delayed)")
+                    calendarView.notifyCalendarChanged()
+                }, 100)
                 filterInterviews()
             }
         }
