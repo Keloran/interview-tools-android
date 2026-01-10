@@ -25,6 +25,7 @@ import com.clerk.api.Clerk
 import com.clerk.ui.auth.AuthView
 import com.clerk.ui.userbutton.UserButton
 import tools.interviews.android.util.FoldableOrientationManager
+import android_app.R
 
 class SignInActivity : ComponentActivity() {
 

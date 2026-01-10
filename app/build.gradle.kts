@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "tools.interviews.android"
+    namespace = "android_app"
     compileSdk {
         version = release(36)
     }

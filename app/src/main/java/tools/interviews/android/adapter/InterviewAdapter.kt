@@ -13,7 +13,8 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
-import tools.interviews.android.R
+// import tools.interviews.android.R
+import android_app.R
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
 import java.time.format.DateTimeFormatter

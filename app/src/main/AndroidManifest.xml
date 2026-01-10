@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:name=".InterviewApplication"
+        android:name="tools.interviews.android.InterviewApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -16,7 +16,7 @@
         android:theme="@style/Theme.Android">
 
         <activity
-            android:name=".MainActivity"
+            android:name="tools.interviews.android.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -25,29 +25,29 @@
         </activity>
 
         <activity
-            android:name=".SettingsActivity"
+            android:name="tools.interviews.android.SettingsActivity"
             android:exported="false"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName="tools.interviews.android.MainActivity" />
 
         <activity
-            android:name=".AddInterviewActivity"
+            android:name="tools.interviews.android.AddInterviewActivity"
             android:exported="false"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName="tools.interviews.android.MainActivity" />
 
         <activity
-            android:name=".InterviewDetailActivity"
+            android:name="tools.interviews.android.InterviewDetailActivity"
             android:exported="false"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName="tools.interviews.android.MainActivity" />
 
         <activity
-            android:name=".EditInterviewActivity"
+            android:name="tools.interviews.android.EditInterviewActivity"
             android:exported="false"
-            android:parentActivityName=".InterviewDetailActivity" />
+            android:parentActivityName="tools.interviews.android.InterviewDetailActivity" />
 
         <activity
-            android:name=".SignInActivity"
+            android:name="tools.interviews.android.SignInActivity"
             android:exported="false"
-            android:parentActivityName=".SettingsActivity" />
+            android:parentActivityName="tools.interviews.android.SettingsActivity" />
 
     </application>
 

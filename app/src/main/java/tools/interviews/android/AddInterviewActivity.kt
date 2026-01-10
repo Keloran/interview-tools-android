@@ -1,7 +1,6 @@
 package tools.interviews.android
 
 import android.app.DatePickerDialog
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.ArrayAdapter
@@ -37,6 +36,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import android_app.R
 
 class AddInterviewActivity : AppCompatActivity() {
 
