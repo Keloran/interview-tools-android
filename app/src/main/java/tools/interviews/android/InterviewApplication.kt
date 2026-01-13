@@ -1,6 +1,7 @@
 package tools.interviews.android
 
 import android.app.Application
+import android_app.BuildConfig
 import com.clerk.api.Clerk
 import gg.flags.client.Auth
 import gg.flags.client.FlagsClient

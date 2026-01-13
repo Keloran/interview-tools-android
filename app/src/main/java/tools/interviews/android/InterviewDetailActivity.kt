@@ -7,7 +7,6 @@ import android.util.Log
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -15,7 +14,6 @@ import com.clerk.api.Clerk
 import com.clerk.api.network.serialization.successOrNull
 import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
@@ -27,6 +25,7 @@ import tools.interviews.android.model.InterviewOutcome
 import tools.interviews.android.model.InterviewStage
 import tools.interviews.android.util.FoldableOrientationManager
 import java.time.format.DateTimeFormatter
+import android_app.R
 
 class InterviewDetailActivity : AppCompatActivity() {
 

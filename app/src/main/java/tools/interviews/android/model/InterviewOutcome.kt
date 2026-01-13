@@ -1,7 +1,8 @@
 package tools.interviews.android.model
 
 import androidx.annotation.ColorRes
-import tools.interviews.android.R
+// import tools.interviews.android.R
+import android_app.R
 
 enum class InterviewOutcome(
     val displayName: String,

@@ -1,7 +1,6 @@
 package tools.interviews.android
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.GestureDetector
@@ -29,6 +28,7 @@ import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.util.FoldableOrientationManager
 import java.time.format.DateTimeFormatter
 import androidx.core.net.toUri
+import android_app.R
 
 class SettingsActivity : AppCompatActivity() {
 

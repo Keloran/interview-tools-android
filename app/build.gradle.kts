@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "tools.interviews.android"
+    namespace = "android_app"
     compileSdk {
         version = release(36)
     }
@@ -30,7 +30,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 1
-        versionName = "1.0.11"
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

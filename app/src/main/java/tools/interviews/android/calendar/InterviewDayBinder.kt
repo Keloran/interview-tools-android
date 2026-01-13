@@ -8,8 +8,8 @@ import androidx.core.content.ContextCompat
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.view.MonthDayBinder
-import tools.interviews.android.R
-import tools.interviews.android.model.InterviewOutcome
+// import tools.interviews.android.R
+import android_app.R
 import java.time.LocalDate
 
 class InterviewDayBinder(
