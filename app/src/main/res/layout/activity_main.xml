@@ -186,17 +186,6 @@
                 android:textAppearance="?attr/textAppearanceBodyLarge" />
 
             <ImageButton
-                android:id="@+id/buttonClearSearch"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/clear_search"
-                android:src="@drawable/ic_close"
-                android:visibility="gone"
-                app:tint="?attr/colorOnSurfaceVariant"
-                tools:visibility="visible" />
-
-            <ImageButton
                 android:id="@+id/buttonCollapseSearch"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
