@@ -67,8 +67,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var emptyState: LinearLayout
     private lateinit var fabAddInterview: FloatingActionButton
     private lateinit var editSearchCompany: AutoCompleteTextView
-    private lateinit var buttonClearSearch: ImageButton
     private var buttonCollapseSearch: ImageButton? = null  // Not present in tablet layout
+
+    private var buttonClearSearch: ImageButton? = null
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private var fabSearch: FloatingActionButton? = null  // Not present in tablet layout
     private lateinit var searchBarContainer: com.google.android.material.card.MaterialCardView
@@ -216,7 +217,6 @@ class MainActivity : AppCompatActivity() {
         emptyState = findViewById(R.id.emptyState)
         fabAddInterview = findViewById(R.id.fabAddInterview)
         editSearchCompany = findViewById(R.id.editSearchCompany)
-        buttonClearSearch = findViewById(R.id.buttonClearSearch)
         buttonCollapseSearch = findViewById(R.id.buttonCollapseSearch)  // May be null on tablet
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
         fabSearch = findViewById(R.id.fabSearch)  // May be null on tablet
@@ -419,7 +419,8 @@ class MainActivity : AppCompatActivity() {
 
         // Handle text changes to show/hide clear button
         editSearchCompany.doAfterTextChanged { text ->
-            buttonClearSearch.isVisible = !text.isNullOrEmpty()
+            buttonCollapseSearch?.isVisible = !text.isNullOrEmpty()
+            buttonClearSearch?.isVisible = !text.isNullOrEmpty()
         }
 
         // Handle item selection from autocomplete dropdown
@@ -444,7 +445,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Clear search button
-        buttonClearSearch.setOnClickListener {
+        buttonCollapseSearch?.setOnClickListener {
+            clearCompanyFilter()
+        }
+        buttonClearSearch?.setOnClickListener {
             clearCompanyFilter()
         }
 
