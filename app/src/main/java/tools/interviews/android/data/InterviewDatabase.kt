@@ -3,6 +3,7 @@ package tools.interviews.android.data
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
+import androidx.room.withTransaction
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
@@ -15,6 +16,17 @@ import tools.interviews.android.model.Interview
 abstract class InterviewDatabase : RoomDatabase() {
     abstract fun interviewDao(): InterviewDao
     abstract fun companyDao(): CompanyDao
+
+    suspend fun clearAccountCache(clearGuests: Boolean) = withTransaction {
+        if (clearGuests) {
+            interviewDao().deleteAll()
+            companyDao().deleteAll()
+        } else {
+            interviewDao().deleteSynced()
+            companyDao().detachGuestCompanies()
+            companyDao().deleteSynced()
+        }
+    }
 
     companion object {
         @Volatile

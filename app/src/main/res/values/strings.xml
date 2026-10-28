@@ -56,4 +56,20 @@
     <string name="previous_month">Previous month</string>
     <string name="next_month">Next month</string>
     <string name="today">Today</string>
+    <string name="your_account_data">Your data</string>
+    <string name="export_applications">Export applications and stages</string>
+    <string name="export_stories">Export STAR stories</string>
+    <string name="delete_account">Delete account</string>
+    <string name="retry_account_cleanup">Finish account cleanup</string>
+    <string name="delete_account_explanation">This permanently deletes your applications, interview stages, notes, stories, activity entries, companies, availability links, calendar feed and login. Export your data first if you want a copy. This cannot be undone.</string>
+    <string name="delete_account_confirmation">Type delete my account to confirm</string>
+    <string name="delete_guest_data_choice">Also delete local-only guest interviews from this device</string>
+    <string name="account_cleanup_explanation">Your account deletion was confirmed. Finish removing cached account data and signing out. No new deletion request will be sent.</string>
+    <string name="account_deleted">Your account and cached account data have been deleted.</string>
+    <string name="account_action_failed">Could not finish: %1$s</string>
+    <string name="account_action_busy">Please wait…</string>
+    <string name="share_export">Share CSV export</string>
+    <string name="deletion_website">Account deletion on the website</string>
+    <string name="cancel_account_action">Cancel</string>
+    <string name="account_action_failed_title">Action not completed</string>
 </resources>

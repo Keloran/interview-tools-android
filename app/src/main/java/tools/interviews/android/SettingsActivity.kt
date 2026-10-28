@@ -1,6 +1,14 @@
 package tools.interviews.android
 
+import android.content.ClipData
 import android.content.Intent
+import androidx.core.content.FileProvider
+import androidx.core.widget.addTextChangedListener
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.checkbox.MaterialCheckBox
+import tools.interviews.android.data.account.ExportKind
+import kotlinx.coroutines.CancellationException
 import android.os.Bundle
 import android.util.Log
 import android.view.GestureDetector
@@ -47,6 +55,13 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var itemWebsite: LinearLayout
     private lateinit var itemGithub: LinearLayout
     private lateinit var textVersion: TextView
+
+    private val accountData get() = (application as InterviewApplication).accountData
+    private var accountActionBusy = false
+    private lateinit var sectionAccountData: LinearLayout
+    private lateinit var exportApplications: MaterialButton
+    private lateinit var exportStories: MaterialButton
+    private lateinit var deleteAccount: MaterialButton
 
     private lateinit var syncService: SyncService
     private lateinit var appUpdateManager: AppUpdateManager
@@ -148,6 +163,10 @@ class SettingsActivity : AppCompatActivity() {
         itemWebsite = findViewById(R.id.itemWebsite)
         itemGithub = findViewById(R.id.itemGithub)
         textVersion = findViewById(R.id.textVersion)
+        sectionAccountData = findViewById(R.id.sectionAccountData)
+        exportApplications = findViewById(R.id.exportApplications)
+        exportStories = findViewById(R.id.exportStories)
+        deleteAccount = findViewById(R.id.deleteAccount)
     }
 
     private fun setupToolbar() {
@@ -157,6 +176,12 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
+        exportApplications.setOnClickListener { exportData(ExportKind.APPLICATIONS) }
+        exportStories.setOnClickListener { exportData(ExportKind.STORIES) }
+        deleteAccount.setOnClickListener { confirmAccountDeletion() }
+        findViewById<MaterialButton>(R.id.deletionWebsite).setOnClickListener {
+            startActivity(Intent(Intent.ACTION_VIEW, "https://interviews.tools/deleteme".toUri()))
+        }
         buttonSignIn.setOnClickListener {
             val user = Clerk.user
             if (user != null) {
@@ -198,6 +223,14 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun updateAuthUI(user: com.clerk.api.user.User? = null) {
         val currentUser = user ?: Clerk.user
+        val pending = accountData.pendingCleanup
+        sectionAccountData.isVisible = currentUser != null || pending
+        exportApplications.isEnabled = currentUser != null && !pending && !accountActionBusy
+        exportStories.isEnabled = currentUser != null && !pending && !accountActionBusy
+        deleteAccount.isEnabled = !accountActionBusy
+        deleteAccount.setText(if (pending) R.string.retry_account_cleanup else R.string.delete_account)
+        buttonSignIn.isEnabled = !accountActionBusy && !pending
+        itemSyncNow.isEnabled = currentUser != null && !pending && !accountActionBusy
         if (currentUser != null) {
             // User is signed in
             val displayName = currentUser.primaryEmailAddress?.emailAddress
@@ -206,7 +239,7 @@ class SettingsActivity : AppCompatActivity() {
             textAccountTitle.text = displayName
             textAccountSubtitle.text = "Tap to sign out"
             buttonSignIn.text = "Sign Out"
-            sectionSync.isVisible = true
+            sectionSync.isVisible = !pending
         } else {
             // User is not signed in (guest mode) - hide sync section
             textAccountTitle.text = "Guest Mode"
@@ -233,7 +266,7 @@ class SettingsActivity : AppCompatActivity() {
                     textLastSynced.text = "Syncing..."
                     itemSyncNow.isEnabled = false
                 } else {
-                    itemSyncNow.isEnabled = Clerk.user != null
+                    itemSyncNow.isEnabled = Clerk.user != null && !accountActionBusy && !accountData.pendingCleanup
                 }
             }
         }
@@ -257,6 +290,77 @@ class SettingsActivity : AppCompatActivity() {
                     textLastSynced.text = "Sync failed"
                     Snackbar.make(itemSyncNow, "Sync failed: ${error.message}", Snackbar.LENGTH_LONG).show()
                 }
+            }
+        }
+    }
+
+
+    private fun confirmAccountDeletion() {
+        if (accountActionBusy) return
+        if (accountData.pendingCleanup) {
+            MaterialAlertDialogBuilder(this).setTitle(R.string.retry_account_cleanup)
+                .setMessage(R.string.account_cleanup_explanation)
+                .setNegativeButton(R.string.cancel_account_action, null)
+                .setPositiveButton(R.string.retry_account_cleanup) { _, _ -> deleteAccountData("delete my account", false) }.show()
+            return
+        }
+        val content = layoutInflater.inflate(R.layout.dialog_delete_account, null)
+        val confirmation = content.findViewById<TextInputEditText>(R.id.deleteConfirmation)
+        val guests = content.findViewById<MaterialCheckBox>(R.id.clearGuestData)
+        val dialog = MaterialAlertDialogBuilder(this).setTitle(R.string.delete_account).setView(content)
+            .setNegativeButton(R.string.cancel_account_action, null)
+            .setPositiveButton(R.string.delete_account, null).create()
+        dialog.setOnShowListener {
+            val submit = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+            submit.isEnabled = false
+            confirmation.addTextChangedListener { submit.isEnabled = it.toString().trim().equals("delete my account", ignoreCase = true) }
+            submit.setOnClickListener {
+                val typed = confirmation.text.toString()
+                val clearGuests = guests.isChecked
+                dialog.dismiss()
+                deleteAccountData(typed, clearGuests)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun deleteAccountData(confirmation: String, clearGuests: Boolean) {
+        runAccountAction {
+            accountData.delete(confirmation, clearGuests)
+            MaterialAlertDialogBuilder(this).setMessage(R.string.account_deleted)
+                .setCancelable(false).setPositiveButton(android.R.string.ok) { _, _ ->
+                    startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+                }.show()
+        }
+    }
+
+    private fun exportData(kind: ExportKind) {
+        runAccountAction {
+            val file = accountData.export(kind)
+            val uri = FileProvider.getUriForFile(this, "$packageName.exports", file)
+            val share = Intent(Intent.ACTION_SEND).setType("text/csv").putExtra(Intent.EXTRA_STREAM, uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            share.clipData = ClipData.newRawUri("CSV export", uri)
+            startActivity(Intent.createChooser(share, getString(R.string.share_export)))
+        }
+    }
+
+    private fun runAccountAction(action: suspend () -> Unit) {
+        if (accountActionBusy) return
+        accountActionBusy = true
+        updateAuthUI()
+        lifecycleScope.launch {
+            try {
+                action()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                MaterialAlertDialogBuilder(this@SettingsActivity).setTitle(R.string.account_action_failed_title)
+                    .setMessage(getString(R.string.account_action_failed, error.message ?: "Please try again."))
+                    .setPositiveButton(android.R.string.ok, null).show()
+            } finally {
+                accountActionBusy = false
+                updateAuthUI()
             }
         }
     }

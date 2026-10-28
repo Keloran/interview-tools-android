@@ -41,6 +41,15 @@ interface CompanyDao {
     @Update
     suspend fun update(company: Company)
 
+    @Query("UPDATE companies SET serverId = NULL WHERE id IN (SELECT companyId FROM interviews WHERE companyId IS NOT NULL)")
+    suspend fun detachGuestCompanies()
+
+    @Query("DELETE FROM companies WHERE serverId IS NOT NULL")
+    suspend fun deleteSynced()
+
+    @Query("DELETE FROM companies")
+    suspend fun deleteAll()
+
     @Delete
     suspend fun delete(company: Company)
 

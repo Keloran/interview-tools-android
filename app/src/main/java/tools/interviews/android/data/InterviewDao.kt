@@ -35,6 +35,12 @@ interface InterviewDao {
     @Update
     suspend fun update(interview: Interview)
 
+    @Query("DELETE FROM interviews WHERE serverId IS NOT NULL")
+    suspend fun deleteSynced()
+
+    @Query("DELETE FROM interviews")
+    suspend fun deleteAll()
+
     @Delete
     suspend fun delete(interview: Interview)
 
