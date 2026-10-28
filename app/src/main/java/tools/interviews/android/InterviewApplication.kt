@@ -2,7 +2,7 @@ package tools.interviews.android
 
 import androidx.room.withTransaction
 import android.app.Application
-import android_app.BuildConfig
+import tools.interviews.android.BuildConfig
 import kotlinx.coroutines.CancellationException
 import tools.interviews.android.data.account.AccountSessionController
 import tools.interviews.android.data.account.AccountOwners
@@ -14,6 +14,7 @@ import tools.interviews.android.data.account.PreferencesDeletionCheckpoint
 import tools.interviews.android.data.api.APIService
 import com.clerk.api.network.serialization.successOrNull
 import com.clerk.api.session.fetchToken
+import com.clerk.api.session.GetTokenOptions
 import com.clerk.api.Clerk
 import gg.flags.client.Auth
 import gg.flags.client.FlagsClient
@@ -34,12 +35,13 @@ class InterviewApplication : Application() {
         { APIService.getInstance().setAuthToken(null) }, { syncService.resetSessionState() }, { accountData.pendingCleanup }) }
     val owner get() = sessionController.owner
     fun ownerNow() = sessionController.effectiveOwner(Clerk.user?.id)
-    suspend fun signOutAccount() = sessionController.signOut({ Clerk.user?.id }) { Clerk.signOut() }
+    suspend fun signOutAccount() = sessionController.signOut({ Clerk.user?.id }) { Clerk.auth.signOut() }
 
     suspend fun authenticateAccount(expectedOwner: String): String {
         if (Clerk.user?.id != expectedOwner || ownerNow() != expectedOwner) throw CancellationException("Account changed before authentication.")
+        APIService.getInstance().setAuthToken(null)
         val session = Clerk.sessionFlow.value ?: error("Please sign in again.")
-        val jwt = session.fetchToken().successOrNull()?.jwt ?: error("Session expired. Please sign in again.")
+        val jwt = session.fetchToken(GetTokenOptions(skipCache = true)).successOrNull()?.jwt ?: error("Session expired. Please sign in again.")
         if (Clerk.user?.id != expectedOwner || ownerNow() != expectedOwner) throw CancellationException("Account changed during authentication.")
         APIService.getInstance().setAuthToken(jwt)
         return jwt
@@ -49,10 +51,10 @@ class InterviewApplication : Application() {
     val accountGate by lazy { AccountOperationGate(deletionCheckpoint.read() != null) }
     val accountData by lazy {
         AccountDataManager(HttpAccountDataApi(), { Clerk.user?.id }, {
-            Clerk.sessionFlow.value?.fetchToken()?.successOrNull()?.jwt ?: error("Please sign in again before retrying.")
+            authenticateAccount(Clerk.user?.id ?: error("Please sign in again before retrying."))
         }, deletionCheckpoint, accountGate, { accountId, guests -> database.clearAccountCache(accountId, guests) }, {
-            // SDK 0.1.31 always clears local credentials, even if the already-deleted remote session returns an error.
-            Clerk.signOut()
+            // Clerk clears local credentials, even if the already-deleted remote session returns an error.
+            Clerk.auth.signOut()
             check(Clerk.user?.id != it) { "Your account is deleted, but local sign-out needs to be retried." }
         },
             { APIService.getInstance().setAuthToken(null) }, File(cacheDir, "account-exports"))

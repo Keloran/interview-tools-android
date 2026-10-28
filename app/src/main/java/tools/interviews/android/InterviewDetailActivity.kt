@@ -30,7 +30,7 @@ import tools.interviews.android.model.InterviewOutcome
 import tools.interviews.android.model.InterviewStage
 import tools.interviews.android.util.FoldableOrientationManager
 import java.time.format.DateTimeFormatter
-import android_app.R
+import tools.interviews.android.R
 
 class InterviewDetailActivity : AppCompatActivity() {
 

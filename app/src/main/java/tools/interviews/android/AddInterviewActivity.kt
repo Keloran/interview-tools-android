@@ -44,7 +44,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import android_app.R
+import tools.interviews.android.R
 
 class AddInterviewActivity : AppCompatActivity() {
 

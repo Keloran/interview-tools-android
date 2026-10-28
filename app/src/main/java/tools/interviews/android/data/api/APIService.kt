@@ -6,7 +6,6 @@ import java.io.IOException
 import com.google.gson.Gson
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
@@ -86,9 +85,7 @@ class APIService private constructor() {
     @Synchronized
     private fun getApi(): InterviewsAPI {
         if (api == null) {
-            val loggingInterceptor = HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            }
+            val loggingInterceptor = NetworkLogging.interceptor()
 
             val requestToken = authToken
             val authInterceptor = Interceptor { chain ->

@@ -6,19 +6,17 @@ plugins {
 }
 
 android {
-    namespace = "android_app"
+    namespace = "tools.interviews.android"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     signingConfigs {
         create("release") {
-            // Logic: Checks Env vars (GitHub Actions).
-            // If missing, falls back to a dummy "keystore.jks" to prevent sync errors.
-            val keystorePath = System.getenv("KEYSTORE_FILE") ?: "keystore.jks"
+            // Local release verification produces an unsigned APK without production credentials.
+            val keystorePath = System.getenv("KEYSTORE_FILE")
 
-            // Fixed: Kotlin DSL requires '=' for assignments
-            storeFile = file(keystorePath)
+            if (keystorePath != null) storeFile = file(keystorePath)
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS")
             keyPassword = System.getenv("KEY_PASSWORD")
@@ -42,8 +40,10 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+            signingConfig = if (providers.gradleProperty("verifyRelease").orNull == "true") signingConfigs.getByName("debug")
+                else signingConfigs.getByName("release").takeIf { it.storeFile != null }
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -61,6 +61,8 @@ android {
             freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
         }
     }
+    testBuildType = providers.gradleProperty("instrumentedBuildType").orElse("debug").get()
+
     buildFeatures {
         buildConfig = true
         compose = true

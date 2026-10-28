@@ -58,7 +58,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import android_app.R
+import tools.interviews.android.R
 
 class MainActivity : AppCompatActivity() {
 
