@@ -34,7 +34,7 @@ public abstract class InferTestKeepRules extends DefaultTask {
         merge(getTestJars().get(), getTestDirectories().get(), sources, shared);
         File output = getOutputFile().get().getAsFile();
         output.getParentFile().mkdirs();
-        List<String> args = new ArrayList<>(List.of("--keep-rules", "--source", sources.getPath(),
+        List<String> args = new ArrayList<>(List.of("--keep-rules", "--allowobfuscation", "--source", sources.getPath(),
             "--target", targets.getPath(), "--output", output.getPath(),
             "--map-diagnostics:MissingDefinitionsDiagnostic", "error", "warning"));
         for (File library : getBootClasspath()) { args.add("--lib"); args.add(library.getPath()); }
@@ -44,6 +44,9 @@ public abstract class InferTestKeepRules extends DefaultTask {
             spec.jvmArgs("-Xmx1g");
             spec.args(args);
         }).assertNormalExitValue();
+        // Keep entry points without freezing package-private Kotlin facade visibility.
+        Files.writeString(output.toPath(), Files.readString(output.toPath()).replace(
+            "-keep,allowobfuscation", "-keep,allowobfuscation,allowaccessmodification"));
     }
 
     private static Set<String> merge(List<RegularFile> jars, List<Directory> dirs,
