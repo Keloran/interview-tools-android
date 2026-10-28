@@ -35,6 +35,9 @@ class InterviewRequestsTest {
         assertNull(InterviewCatalog.methodKind("A future service"))
         assertEquals("A future service", draft().copy(serverMethodName = "A future service").methodLabel)
     }
+    @Test fun `invalid server parent IDs are rejected instead of creating an unrelated application`() {
+        for (id in listOf(0, -1)) assertTrue(runCatching { InterviewRequests.create(draft(), previousServerId = id) }.isFailure)
+    }
     @Test fun `invalid durations are rejected before upload`() {
         for (minutes in listOf(0, 14, 481)) assertTrue(runCatching { InterviewRequests.create(draft().copy(durationMinutes = minutes)) }.isFailure)
     }

@@ -7,6 +7,8 @@ object InterviewRequests {
         require(interview.stage != InterviewStage.UNKNOWN || (interview.stageRecognized && interview.serverStageId != null)) { "Choose a recognized stage before uploading." }
         require(interview.outcome != InterviewOutcome.UNKNOWN) { "Choose a recognized outcome before uploading." }
         require(interview.previousLocalId == null || previousServerId != null) { "The previous stage must sync first." }
+        val parent = previousServerId ?: interview.parentId
+        require(parent == null || parent > 0) { "The previous stage must have a valid server ID." }
         interview.durationMinutes?.let { require(it in 15..480) { "Duration must be 15–480 minutes." } }
         return CreateInterviewRequest(
             stage = if (interview.stage == InterviewStage.UNKNOWN) requireNotNull(interview.serverStageName) else interview.stage.displayName,
@@ -20,7 +22,7 @@ object InterviewRequests {
             },
             interviewLink = interview.link, notes = interview.notes,
             offerDeadline = if (interview.stage == InterviewStage.OFFER) interview.offerRespondBy?.toString() else null,
-            previousInterviewId = previousServerId ?: interview.parentId,
+            previousInterviewId = parent,
             durationMinutes = interview.durationMinutes, stageMethodId = interview.serverMethodId
         )
     }
