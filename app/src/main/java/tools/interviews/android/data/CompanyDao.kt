@@ -56,6 +56,9 @@ interface CompanyDao {
     @Query("DELETE FROM companies WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM companies WHERE serverId = :serverId AND id NOT IN (SELECT companyId FROM interviews WHERE companyId IS NOT NULL)")
+    suspend fun deleteUnreferencedByServerId(serverId: Int)
+
     @Query("DELETE FROM companies WHERE serverId = :serverId")
     suspend fun deleteByServerId(serverId: Int)
 }
