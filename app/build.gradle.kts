@@ -1,6 +1,6 @@
 import com.android.build.api.artifact.ScopedArtifact
 import com.android.build.api.variant.ScopedArtifacts
-import tools.interviews.build.InferTestKeepRules
+import tools.interviews.gradle.InferTestKeepRules
 import com.android.tools.r8.tracereferences.TraceReferences
 
 plugins {
