@@ -27,7 +27,7 @@ abstract class InterviewDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION = 6
+        const val VERSION = 7
         @Volatile
         private var INSTANCE: InterviewDatabase? = null
 
@@ -181,7 +181,17 @@ abstract class InterviewDatabase : RoomDatabase() {
             }
         }
 
-        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE interviews ADD COLUMN interviewInstant TEXT")
+                db.execSQL("ALTER TABLE interviews ADD COLUMN deadlineInstant TEXT")
+                db.execSQL("ALTER TABLE interviews ADD COLUMN offerRespondBy TEXT")
+                // Offer deadlines are calendar days. Old meeting offsets cannot be recovered.
+                db.execSQL("UPDATE interviews SET offerRespondBy = substr(deadline, 1, 10) WHERE stage = 'OFFER' AND deadline IS NOT NULL")
+            }
+        }
+
+        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
         fun getDatabase(context: Context): InterviewDatabase {
             return INSTANCE ?: synchronized(this) {

@@ -1,5 +1,11 @@
 package tools.interviews.android
 
+import tools.interviews.android.util.confirmMeetingTime
+import tools.interviews.android.model.InterviewTimes
+import tools.interviews.android.model.displayInterviewDate
+import tools.interviews.android.model.displayDeadline
+import tools.interviews.android.model.needsTimeConfirmation
+import java.time.ZoneOffset
 import tools.interviews.android.util.finishOnAccountChange
 import tools.interviews.android.data.account.AccountOwners
 import android.app.DatePickerDialog
@@ -79,6 +85,7 @@ class AddInterviewActivity : AppCompatActivity() {
     private var selectedStage: InterviewStage = InterviewStage.APPLIED
     private var selectedMethod: InterviewMethod? = null
     private var selectedDateTime: LocalDateTime? = null
+    private var selectedInstant: Instant? = null
     private var selectedDeadline: LocalDate? = null
     private var initialDate: LocalDate? = null  // Store the date passed from calendar
     private var existingCompanies = mutableListOf<String>()
@@ -267,6 +274,7 @@ class AddInterviewActivity : AppCompatActivity() {
         if (!showInterviewDetails) {
             // Clear interview UI details if hiding
             selectedDateTime = null
+            selectedInstant = null
             selectedMethod = null
             editInterviewDateTime.text?.clear()
             dropdownMethod.text?.clear()
@@ -295,8 +303,8 @@ class AddInterviewActivity : AppCompatActivity() {
     private fun showDateTimePicker() {
         // Use initial date if available, or existing selection, or today
         val initialSelection = when {
-            selectedDateTime != null -> selectedDateTime!!.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            initialDate != null -> initialDate!!.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            selectedDateTime != null -> selectedDateTime!!.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            initialDate != null -> initialDate!!.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
             else -> MaterialDatePicker.todayInUtcMilliseconds()
         }
 
@@ -307,7 +315,7 @@ class AddInterviewActivity : AppCompatActivity() {
 
         datePicker.addOnPositiveButtonClickListener { dateMillis ->
             val selectedDate = Instant.ofEpochMilli(dateMillis)
-                .atZone(ZoneId.systemDefault())
+                .atZone(ZoneOffset.UTC)
                 .toLocalDate()
 
             // Immediately show time picker after date is selected
@@ -322,12 +330,14 @@ class AddInterviewActivity : AppCompatActivity() {
                 .build()
 
             timePicker.addOnPositiveButtonClickListener {
-                selectedDateTime = LocalDateTime.of(
-                    selectedDate,
-                    LocalTime.of(timePicker.hour, timePicker.minute)
-                )
-                editInterviewDateTime.setText(selectedDateTime?.format(dateTimeFormatter))
-                validateForm()
+                val local = LocalDateTime.of(selectedDate, LocalTime.of(timePicker.hour, timePicker.minute))
+                confirmMeetingTime(local) { instant ->
+                    selectedInstant = instant
+                    selectedDateTime = local
+                    editInterviewDateTime.error = null
+                    editInterviewDateTime.setText(local.format(dateTimeFormatter))
+                    validateForm()
+                }
             }
 
             timePicker.show(supportFragmentManager, "timePicker")
@@ -427,8 +437,8 @@ class AddInterviewActivity : AppCompatActivity() {
             method = selectedMethod,
             outcome = outcome,
             applicationDate = applicationDate,
-            interviewDate = interviewDate,
-            deadline = deadline,
+            interviewInstant = if (selectedStage !in listOf(InterviewStage.APPLIED, InterviewStage.OFFER, InterviewStage.TECHNICAL_TEST)) selectedInstant else null,
+            deadlineInstant = deadline?.toLocalDate()?.plusDays(1)?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.minusSeconds(60),
             interviewer = editInterviewer.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             link = link,
             jobListing = jobListing,

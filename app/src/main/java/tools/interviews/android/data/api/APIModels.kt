@@ -54,7 +54,8 @@ data class CreateInterviewRequest(
     val interviewer: String?,
     val locationType: String?,
     val interviewLink: String?,
-    val notes: String?
+    val notes: String?,
+    val offerDeadline: String? = null
 )
 
 data class UpdateInterviewRequest(

@@ -7,6 +7,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.LocalDate
+import java.time.Instant
 import java.time.LocalDateTime
 
 @Entity(
@@ -40,5 +41,9 @@ data class Interview(
     val link: String? = null,
     val jobListing: String? = null,
     val notes: String? = null,
-    val metadataJSON: String? = null
+    val metadataJSON: String? = null,
+    // Legacy wall-clock columns remain recoverable, with no assumed timezone.
+    val interviewInstant: Instant? = null,
+    val deadlineInstant: Instant? = null,
+    val offerRespondBy: LocalDate? = null
 )

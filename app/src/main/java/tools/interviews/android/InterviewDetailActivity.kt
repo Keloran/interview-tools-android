@@ -1,5 +1,8 @@
 package tools.interviews.android
 
+import tools.interviews.android.model.needsTimeConfirmation
+import tools.interviews.android.model.displayInterviewDate
+import tools.interviews.android.model.displayDeadline
 import tools.interviews.android.util.finishOnAccountChange
 import tools.interviews.android.data.account.AccountOwners
 import android.content.Intent
@@ -209,21 +212,21 @@ class InterviewDetailActivity : AppCompatActivity() {
         }
 
         // Interview date/time
-        if (interview.interviewDate != null) {
+        if (interview.displayInterviewDate != null) {
             labelDateTime.text = "Interview Date & Time"
             labelDateTime.isVisible = true
             cardDateTime.isVisible = true
-            textDateTime.text = interview.interviewDate.format(dateTimeFormatter)
+            textDateTime.text = interview.displayInterviewDate?.format(dateTimeFormatter) + if (interview.needsTimeConfirmation) " · Confirm timezone in Edit" else ""
         } else {
             labelDateTime.isVisible = false
             cardDateTime.isVisible = false
         }
 
         // Deadline (for technical tests)
-        if (interview.deadline != null) {
+        if (interview.displayDeadline != null) {
             labelDeadline.isVisible = true
             cardDeadline.isVisible = true
-            textDeadline.text = interview.deadline.format(dateFormatter)
+            textDeadline.text = interview.displayDeadline?.format(dateFormatter)
         } else {
             labelDeadline.isVisible = false
             cardDeadline.isVisible = false

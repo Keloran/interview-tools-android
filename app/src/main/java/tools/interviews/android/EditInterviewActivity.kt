@@ -1,5 +1,11 @@
 package tools.interviews.android
 
+import tools.interviews.android.util.confirmMeetingTime
+import tools.interviews.android.model.InterviewTimes
+import tools.interviews.android.model.displayInterviewDate
+import tools.interviews.android.model.displayDeadline
+import tools.interviews.android.model.needsTimeConfirmation
+import java.time.ZoneOffset
 import tools.interviews.android.util.finishOnAccountChange
 import tools.interviews.android.data.account.AccountOwners
 import android.app.DatePickerDialog
@@ -61,7 +67,9 @@ class EditInterviewActivity : AppCompatActivity() {
     private var selectedMethod: InterviewMethod? = null
     private var selectedOutcome: InterviewOutcome = InterviewOutcome.SCHEDULED
     private var selectedDateTime: LocalDateTime? = null
+    private var selectedInstant: Instant? = null
     private var selectedDeadline: LocalDate? = null
+    private var deadlineChanged = false
     private var applicationDate: LocalDate = LocalDate.now()
     private var existingCompanies = mutableListOf<String>()
 
@@ -152,12 +160,13 @@ class EditInterviewActivity : AppCompatActivity() {
         editJobTitle.setText(interview.jobTitle)
         editJobListing.setText(interview.jobListing ?: "")
 
-        interview.interviewDate?.let {
+        selectedInstant = interview.interviewInstant
+        (interview.interviewInstant?.let { InterviewTimes.local(it) } ?: interview.interviewDate)?.let {
             selectedDateTime = it
             editInterviewDateTime.setText(it.format(dateTimeFormatter))
         }
 
-        interview.deadline?.let {
+        interview.displayDeadline?.let {
             selectedDeadline = it.toLocalDate()
             editDeadline.setText(selectedDeadline?.format(dateFormatter))
         }
@@ -171,6 +180,10 @@ class EditInterviewActivity : AppCompatActivity() {
         }
 
         editNotes.setText(interview.notes ?: "")
+        if (interview.needsTimeConfirmation) {
+            editInterviewDateTime.error = "Older times have no timezone. Pick the meeting time again before syncing."
+            editDeadline.error = "Pick the deadline again to confirm its timezone."
+        }
     }
 
     private fun setupDropdowns() {
@@ -235,6 +248,7 @@ class EditInterviewActivity : AppCompatActivity() {
         if (!showInterviewDetails && !isTechnicalTest && clearHiddenFields) {
             // Clear interview details if hiding (and not switching to technical test)
             selectedDateTime = null
+            selectedInstant = null
             selectedMethod = null
             editInterviewDateTime.text?.clear()
             dropdownMethod.text?.clear()
@@ -262,7 +276,7 @@ class EditInterviewActivity : AppCompatActivity() {
 
     private fun showDateTimePicker() {
         val initialSelection = selectedDateTime
-            ?.atZone(ZoneId.systemDefault())
+            ?.toLocalDate()?.atStartOfDay(ZoneOffset.UTC)
             ?.toInstant()
             ?.toEpochMilli()
             ?: MaterialDatePicker.todayInUtcMilliseconds()
@@ -274,7 +288,7 @@ class EditInterviewActivity : AppCompatActivity() {
 
         datePicker.addOnPositiveButtonClickListener { dateMillis ->
             val selectedDate = Instant.ofEpochMilli(dateMillis)
-                .atZone(ZoneId.systemDefault())
+                .atZone(ZoneOffset.UTC)
                 .toLocalDate()
 
             // Immediately show time picker after date is selected
@@ -289,12 +303,14 @@ class EditInterviewActivity : AppCompatActivity() {
                 .build()
 
             timePicker.addOnPositiveButtonClickListener {
-                selectedDateTime = LocalDateTime.of(
-                    selectedDate,
-                    LocalTime.of(timePicker.hour, timePicker.minute)
-                )
-                editInterviewDateTime.setText(selectedDateTime?.format(dateTimeFormatter))
-                validateForm()
+                val local = LocalDateTime.of(selectedDate, LocalTime.of(timePicker.hour, timePicker.minute))
+                confirmMeetingTime(local) { instant ->
+                    selectedInstant = instant
+                    selectedDateTime = local
+                    editInterviewDateTime.error = null
+                    editInterviewDateTime.setText(local.format(dateTimeFormatter))
+                    validateForm()
+                }
             }
 
             timePicker.show(supportFragmentManager, "timePicker")
@@ -309,6 +325,7 @@ class EditInterviewActivity : AppCompatActivity() {
             this,
             { _, year, month, dayOfMonth ->
                 selectedDeadline = LocalDate.of(year, month + 1, dayOfMonth)
+                deadlineChanged = true
                 editDeadline.setText(selectedDeadline?.format(dateFormatter))
                 validateForm()
             },
@@ -375,8 +392,10 @@ class EditInterviewActivity : AppCompatActivity() {
             method = selectedMethod,
             outcome = selectedOutcome,
             applicationDate = applicationDate,
-            interviewDate = interviewDate,
-            deadline = deadline,
+            interviewDate = if (selectedInstant == null) interviewDate else null,
+            interviewInstant = selectedInstant,
+            deadline = if (deadlineChanged && isTechnicalTest) null else deadline,
+            deadlineInstant = if (isTechnicalTest && deadlineChanged) selectedDeadline?.plusDays(1)?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.minusSeconds(60) else original.deadlineInstant,
             interviewer = editInterviewer.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             link = link,
             jobListing = jobListing,
