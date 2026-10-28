@@ -17,7 +17,7 @@ object InterviewTimes {
         zone.rules.getValidOffsets(local).map { local.toInstant(it) }
 }
 
-val Interview.hasMeeting: Boolean get() = stage !in setOf(InterviewStage.APPLIED, InterviewStage.OFFER, InterviewStage.TECHNICAL_TEST)
+val Interview.hasMeeting: Boolean get() = stage !in setOf(InterviewStage.APPLIED, InterviewStage.OFFER, InterviewStage.TECHNICAL_TEST, InterviewStage.UNKNOWN)
 val Interview.displayInterviewDate: LocalDateTime? get() = if (hasMeeting) interviewInstant?.let { InterviewTimes.local(it) } ?: interviewDate else null
 val Interview.displayDeadline: LocalDateTime? get() = when (stage) {
     InterviewStage.OFFER -> offerRespondBy?.atStartOfDay() ?: deadline

@@ -1,5 +1,6 @@
 package tools.interviews.android
 
+import tools.interviews.android.model.*
 import tools.interviews.android.util.confirmMeetingTime
 import tools.interviews.android.model.InterviewTimes
 import tools.interviews.android.model.displayInterviewDate
@@ -188,10 +189,10 @@ class EditInterviewActivity : AppCompatActivity() {
 
     private fun setupDropdowns() {
         // Stage dropdown
-        val stages = InterviewStage.entries.map { it.displayName }
+        val stages = InterviewStage.entries.filter { it != InterviewStage.UNKNOWN }.map { it.displayName }
         val stageAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, stages)
         dropdownStage.setAdapter(stageAdapter)
-        dropdownStage.setText(selectedStage.displayName, false)
+        dropdownStage.setText(originalInterview?.stageLabel ?: selectedStage.displayName, false)
         dropdownStage.setOnItemClickListener { _, _, position, _ ->
             selectedStage = InterviewStage.entries[position]
             updateInterviewDetailsVisibility()
@@ -348,7 +349,7 @@ class EditInterviewActivity : AppCompatActivity() {
 
         val isValid = when {
             selectedStage == InterviewStage.APPLIED ||
-            selectedStage == InterviewStage.OFFER -> {
+            selectedStage == InterviewStage.OFFER || selectedStage == InterviewStage.UNKNOWN -> {
                 hasBasicInfo
             }
             selectedStage == InterviewStage.TECHNICAL_TEST -> {

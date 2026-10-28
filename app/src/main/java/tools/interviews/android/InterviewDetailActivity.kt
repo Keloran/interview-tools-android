@@ -1,5 +1,6 @@
 package tools.interviews.android
 
+import tools.interviews.android.model.*
 import tools.interviews.android.model.needsTimeConfirmation
 import tools.interviews.android.model.displayInterviewDate
 import tools.interviews.android.model.displayDeadline
@@ -177,13 +178,12 @@ class InterviewDetailActivity : AppCompatActivity() {
         textCompanyName.text = interview.companyName
 
         // Outcome badge
-        badgeOutcome.text = interview.outcome.displayName
+        badgeOutcome.text = interview.outcomeLabel
         badgeOutcome.setBackgroundColor(getOutcomeColor(interview.outcome))
         badgeOutcome.setTextColor(getOutcomeTextColor(interview.outcome))
 
         // Hide action buttons if outcome is final (rejected or passed)
-        val isOutcomeFinal = interview.outcome == InterviewOutcome.REJECTED ||
-                interview.outcome == InterviewOutcome.PASSED
+        val isOutcomeFinal = interview.outcome.isClosed || interview.outcome == InterviewOutcome.UNKNOWN
 
         // Default to invisible
         buttonReject.isVisible = false
@@ -201,7 +201,7 @@ class InterviewDetailActivity : AppCompatActivity() {
         }
 
         // Stage badge
-        badgeStage.text = interview.stage.displayName
+        badgeStage.text = interview.stageLabel
 
         // Method badge
         if (interview.method != null) {
@@ -297,6 +297,8 @@ class InterviewDetailActivity : AppCompatActivity() {
             InterviewOutcome.OFFER_RECEIVED -> getColor(R.color.outcome_offer_received)
             InterviewOutcome.OFFER_DECLINED -> getColor(R.color.outcome_offer_declined)
             InterviewOutcome.WITHDREW -> getColor(R.color.outcome_withdrew)
+            InterviewOutcome.NO_RESPONSE -> getColor(R.color.outcome_no_response)
+            InterviewOutcome.UNKNOWN -> getColor(R.color.outcome_unknown)
         }
     }
 

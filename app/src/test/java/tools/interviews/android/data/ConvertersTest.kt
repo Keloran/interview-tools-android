@@ -198,24 +198,18 @@ class ConvertersTest {
     }
 
     @Test
-    fun `toInterviewStage throws on invalid stage name`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            converters.toInterviewStage("INVALID_STAGE")
-        }
+    fun `toInterviewStage preserves unknown marker for invalid stage name`() {
+        assertEquals(InterviewStage.UNKNOWN, converters.toInterviewStage("INVALID_STAGE"))
     }
 
     @Test
-    fun `toInterviewStage throws on lowercase stage name`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            converters.toInterviewStage("applied") // Should be APPLIED
-        }
+    fun `toInterviewStage preserves unknown marker for lowercase stage name`() {
+        assertEquals(InterviewStage.UNKNOWN, converters.toInterviewStage("applied"))
     }
 
     @Test
-    fun `toInterviewStage throws on empty string`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            converters.toInterviewStage("")
-        }
+    fun `toInterviewStage preserves unknown marker for empty string`() {
+        assertEquals(InterviewStage.UNKNOWN, converters.toInterviewStage(""))
     }
 
     @Test
@@ -306,24 +300,18 @@ class ConvertersTest {
     }
 
     @Test
-    fun `toInterviewOutcome throws on invalid outcome name`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            converters.toInterviewOutcome("INVALID_OUTCOME")
-        }
+    fun `toInterviewOutcome preserves unknown marker for invalid outcome name`() {
+        assertEquals(InterviewOutcome.UNKNOWN, converters.toInterviewOutcome("INVALID_OUTCOME"))
     }
 
     @Test
-    fun `toInterviewOutcome throws on display name instead of enum name`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            converters.toInterviewOutcome("Awaiting Response") // Should be AWAITING_RESPONSE
-        }
+    fun `toInterviewOutcome preserves unknown marker for display name instead of enum name`() {
+        assertEquals(InterviewOutcome.UNKNOWN, converters.toInterviewOutcome("Awaiting Response"))
     }
 
     @Test
-    fun `toInterviewOutcome throws on partial match`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            converters.toInterviewOutcome("PASSED_WITH_FLYING_COLORS")
-        }
+    fun `toInterviewOutcome preserves unknown marker for partial match`() {
+        assertEquals(InterviewOutcome.UNKNOWN, converters.toInterviewOutcome("PASSED_WITH_FLYING_COLORS"))
     }
 
     @Test

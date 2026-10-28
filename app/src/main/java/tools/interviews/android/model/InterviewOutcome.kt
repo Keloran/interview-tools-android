@@ -14,5 +14,7 @@ enum class InterviewOutcome(
     OFFER_RECEIVED("Offer Received", R.color.outcome_offer_received),
     OFFER_ACCEPTED("Offer Accepted", R.color.outcome_offer_accepted),
     OFFER_DECLINED("Offer Declined", R.color.outcome_offer_declined),
-    WITHDREW("Withdrew", R.color.outcome_withdrew)
+    WITHDREW("Withdrew", R.color.outcome_withdrew),
+    NO_RESPONSE("No response", R.color.outcome_no_response),
+    UNKNOWN("Unknown outcome", R.color.outcome_unknown)
 }

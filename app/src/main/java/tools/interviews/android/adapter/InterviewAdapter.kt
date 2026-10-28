@@ -1,5 +1,6 @@
 package tools.interviews.android.adapter
 
+import tools.interviews.android.model.*
 import tools.interviews.android.model.needsTimeConfirmation
 import tools.interviews.android.model.displayInterviewDate
 import tools.interviews.android.model.displayDeadline
@@ -94,7 +95,7 @@ class InterviewAdapter(
             }
 
             // Stage badge
-            badgeStage.text = interview.stage.displayName
+            badgeStage.text = interview.stageLabel
 
             // Method badge (only show if method is set)
             badgeMethod.isVisible = interview.method != null
@@ -106,11 +107,12 @@ class InterviewAdapter(
             cardContent.translationX = 0f
 
             // Show/hide action buttons based on current outcome
-            val isRejected = interview.outcome == InterviewOutcome.REJECTED
+            val isRejected = interview.outcome.isClosed || interview.outcome == InterviewOutcome.UNKNOWN
             val isAwaiting = interview.outcome == InterviewOutcome.AWAITING_RESPONSE
 
             // If rejected, hide both Awaiting and Reject buttons
             // If awaiting, hide Awaiting button
+            buttonNextStage.visibility = if (isRejected || interview.stage == InterviewStage.UNKNOWN) View.GONE else View.VISIBLE
             buttonAwaiting.visibility = if (isRejected || isAwaiting) View.GONE else View.VISIBLE
             buttonReject.visibility = if (isRejected) View.GONE else View.VISIBLE
 
@@ -161,6 +163,10 @@ class InterviewAdapter(
             canSwipeLeft: Boolean,
             fullSwipeRightAction: () -> Unit
         ) {
+            if (currentLeftWidth == 0f && !canSwipeLeft) {
+                cardContent.setOnTouchListener(null)
+                return
+            }
             cardContent.setOnTouchListener { view, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {

@@ -48,6 +48,20 @@ class AccountOwnershipMigrationTest {
         context.deleteDatabase(name)
     }
 
+    @Test fun unknownStoredStatusesSurviveUpgradeWithTheirOriginalNames() = runBlocking {
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use {
+            it.execSQL("UPDATE interviews SET stage = 'FUTURE_PANEL', outcome = 'PAUSED_BY_EMPLOYER' WHERE id = 1")
+            it.execSQL("UPDATE interviews SET outcome = 'NO_RESPONSE' WHERE id = 2")
+        }
+        val older = database.interviewDao().getLegacyByServerId(100)!!
+        assertEquals(InterviewStage.UNKNOWN, older.stage)
+        assertEquals(InterviewOutcome.UNKNOWN, older.outcome)
+        assertEquals("FUTURE_PANEL", older.stageLabel)
+        assertEquals("PAUSED_BY_EMPLOYER", older.outcomeLabel)
+        assertFalse(older.isUpcomingRecord)
+        assertEquals(InterviewOutcome.NO_RESPONSE, database.interviewDao().localOnly(AccountOwners.LEGACY).single().outcome)
+    }
+
     @Test fun oldWallClockTimesRemainRecoverableWithoutAnInventedOffset() = runBlocking {
         SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use {
             it.execSQL("UPDATE interviews SET stage = 'FIRST_STAGE', interviewDate = '2026-06-01T09:00' WHERE id = 1")
