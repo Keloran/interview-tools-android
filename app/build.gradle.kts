@@ -42,6 +42,9 @@ android {
         release {
             signingConfig = if (providers.gradleProperty("verifyRelease").orNull == "true") signingConfigs.getByName("debug")
                 else signingConfigs.getByName("release").takeIf { it.storeFile != null }
+            if (providers.gradleProperty("verifyRelease").orNull == "true") {
+                proguardFile("proguard-test-host.pro")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
