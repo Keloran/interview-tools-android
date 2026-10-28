@@ -18,3 +18,5 @@ app/release
 
 .kotlin/
 app/.attach_pid*
+
+/buildSrc/build/
