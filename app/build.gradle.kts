@@ -1,3 +1,8 @@
+import com.android.build.api.artifact.ScopedArtifact
+import com.android.build.api.variant.ScopedArtifacts
+import tools.interviews.gradle.InferTestKeepRules
+import com.android.tools.r8.tracereferences.TraceReferences
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -42,9 +47,6 @@ android {
         release {
             signingConfig = if (providers.gradleProperty("verifyRelease").orNull == "true") signingConfigs.getByName("debug")
                 else signingConfigs.getByName("release").takeIf { it.storeFile != null }
-            if (providers.gradleProperty("verifyRelease").orNull == "true") {
-                proguardFile("proguard-test-host.pro")
-            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -127,4 +129,22 @@ dependencies {
 
     // Flags
     implementation(libs.flags)
+}
+// AGP does not include androidTest references while shrinking the target APK.
+// Infer those entry points with the R8 tool bundled with this AGP version.
+if (providers.gradleProperty("verifyRelease").orNull == "true") {
+    androidComponents.onVariants(androidComponents.selector().withBuildType("release")) { variant ->
+        variant.androidTest?.let { tests ->
+            val rules = tasks.register<InferTestKeepRules>("inferReleaseTestKeepRules") {
+                tracerClasspath.from(files(TraceReferences::class.java.protectionDomain.codeSource.location))
+                bootClasspath.from(androidComponents.sdkComponents.bootClasspath)
+                outputFile.set(layout.buildDirectory.file("generated/test-entrypoints/release.pro"))
+            }
+            variant.artifacts.forScope(ScopedArtifacts.Scope.ALL).use(rules).toGet(
+                ScopedArtifact.CLASSES, InferTestKeepRules::getApplicationJars, InferTestKeepRules::getApplicationDirectories)
+            tests.artifacts.forScope(ScopedArtifacts.Scope.ALL).use(rules).toGet(
+                ScopedArtifact.CLASSES, InferTestKeepRules::getTestJars, InferTestKeepRules::getTestDirectories)
+            variant.proguardFiles.add(rules.flatMap { it.outputFile })
+        }
+    }
 }
