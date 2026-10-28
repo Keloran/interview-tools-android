@@ -11,24 +11,23 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import tools.interviews.android.model.Company
 import tools.interviews.android.model.Interview
 
-@Database(entities = [Interview::class, Company::class], version = 5, exportSchema = false)
+@Database(entities = [Interview::class, Company::class], version = InterviewDatabase.VERSION, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class InterviewDatabase : RoomDatabase() {
     abstract fun interviewDao(): InterviewDao
     abstract fun companyDao(): CompanyDao
 
-    suspend fun clearAccountCache(clearGuests: Boolean) = withTransaction {
-        if (clearGuests) {
-            interviewDao().deleteAll()
-            companyDao().deleteAll()
-        } else {
-            interviewDao().deleteSynced()
-            companyDao().detachGuestCompanies()
-            companyDao().deleteSynced()
-        }
+    suspend fun clearAccountCache(ownerId: String, clearGuests: Boolean) = withTransaction {
+        interviewDao().deleteOwner(ownerId)
+        interviewDao().deleteSynced("legacy") // unclaimed old server cache must not retain deleted account data
+        if (clearGuests) interviewDao().deleteGuestLocal()
+        companyDao().detachGuestCompanies(ownerId)
+        companyDao().deleteSynced(ownerId)
+        if (clearGuests) companyDao().deleteSynced("guest")
     }
 
     companion object {
+        const val VERSION = 6
         @Volatile
         private var INSTANCE: InterviewDatabase? = null
 
@@ -170,6 +169,20 @@ abstract class InterviewDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE interviews ADD COLUMN ownerId TEXT NOT NULL DEFAULT 'guest'")
+                db.execSQL("ALTER TABLE companies ADD COLUMN ownerId TEXT NOT NULL DEFAULT 'guest'")
+                // The old schema cannot establish ownership. Keep it intact but hidden until verified/restored.
+                db.execSQL("UPDATE interviews SET ownerId = 'legacy'")
+                db.execSQL("UPDATE companies SET ownerId = 'legacy'")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_interviews_ownerId ON interviews (ownerId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_companies_ownerId ON companies (ownerId)")
+            }
+        }
+
+        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+
         fun getDatabase(context: Context): InterviewDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -177,7 +190,7 @@ abstract class InterviewDatabase : RoomDatabase() {
                     InterviewDatabase::class.java,
                     "interview_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(*ALL_MIGRATIONS)
                     .build()
                 INSTANCE = instance
                 instance

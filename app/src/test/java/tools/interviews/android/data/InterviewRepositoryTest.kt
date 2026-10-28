@@ -23,6 +23,7 @@ class InterviewRepositoryTest {
     fun setup() {
         mockInterviewDao = mockk(relaxed = true)
         mockCompanyDao = mockk(relaxed = true)
+        coEvery { mockInterviewDao.getInterviewById(any(), "guest") } answers { createTestInterview(id = firstArg()) }
         repository = InterviewRepository(mockInterviewDao, mockCompanyDao)
     }
 
@@ -158,7 +159,8 @@ class InterviewRepositoryTest {
 
         repository.allInterviews.test {
             val result = awaitItem()
-            assertEquals(2, result.size)
+            assertTrue(result.isEmpty())
+            assertEquals(2, awaitItem().size)
             cancelAndConsumeRemainingEvents()
         }
     }
@@ -307,8 +309,10 @@ class InterviewRepositoryTest {
 
         repository.allCompanies.test {
             val result = awaitItem()
-            assertEquals(3, result.size)
-            assertTrue(result.contains("Acme Corp"))
+            assertTrue(result.isEmpty())
+            val loaded = awaitItem()
+            assertEquals(3, loaded.size)
+            assertTrue(loaded.contains("Acme Corp"))
             cancelAndConsumeRemainingEvents()
         }
     }

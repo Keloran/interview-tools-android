@@ -3,6 +3,9 @@ package tools.interviews.android
 import androidx.room.withTransaction
 import android.app.Application
 import android_app.BuildConfig
+import kotlinx.coroutines.CancellationException
+import tools.interviews.android.data.account.AccountSessionController
+import tools.interviews.android.data.account.AccountOwners
 import java.io.File
 import tools.interviews.android.data.account.AccountDataManager
 import tools.interviews.android.data.account.AccountOperationGate
@@ -27,12 +30,27 @@ import tools.interviews.android.data.api.SyncService
 class InterviewApplication : Application() {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    private val sessionController by lazy { AccountSessionController(accountGate,
+        { APIService.getInstance().setAuthToken(null) }, { syncService.resetSessionState() }, { accountData.pendingCleanup }) }
+    val owner get() = sessionController.owner
+    fun ownerNow() = sessionController.effectiveOwner(Clerk.user?.id)
+    suspend fun signOutAccount() = sessionController.signOut({ Clerk.user?.id }) { Clerk.signOut() }
+
+    suspend fun authenticateAccount(expectedOwner: String): String {
+        if (Clerk.user?.id != expectedOwner || ownerNow() != expectedOwner) throw CancellationException("Account changed before authentication.")
+        val session = Clerk.sessionFlow.value ?: error("Please sign in again.")
+        val jwt = session.fetchToken().successOrNull()?.jwt ?: error("Session expired. Please sign in again.")
+        if (Clerk.user?.id != expectedOwner || ownerNow() != expectedOwner) throw CancellationException("Account changed during authentication.")
+        APIService.getInstance().setAuthToken(jwt)
+        return jwt
+    }
+
     private val deletionCheckpoint by lazy { PreferencesDeletionCheckpoint(getSharedPreferences("account-deletion", MODE_PRIVATE)) }
     val accountGate by lazy { AccountOperationGate(deletionCheckpoint.read() != null) }
     val accountData by lazy {
         AccountDataManager(HttpAccountDataApi(), { Clerk.user?.id }, {
             Clerk.sessionFlow.value?.fetchToken()?.successOrNull()?.jwt ?: error("Please sign in again before retrying.")
-        }, deletionCheckpoint, accountGate, { database.clearAccountCache(it) }, {
+        }, deletionCheckpoint, accountGate, { accountId, guests -> database.clearAccountCache(accountId, guests) }, {
             // SDK 0.1.31 always clears local credentials, even if the already-deleted remote session returns an error.
             Clerk.signOut()
             check(Clerk.user?.id != it) { "Your account is deleted, but local sign-out needs to be retried." }
@@ -41,13 +59,15 @@ class InterviewApplication : Application() {
     }
 
     val database by lazy { InterviewDatabase.getDatabase(this) }
-    val repository by lazy { InterviewRepository(database.interviewDao(), database.companyDao(), accountGate) }
+    val repository by lazy { InterviewRepository(database.interviewDao(), database.companyDao(), accountGate,
+        owner, ::ownerNow, { block -> database.withTransaction { block() } }) }
     val syncService by lazy {
         SyncService(
             interviewDao = database.interviewDao(),
             companyDao = database.companyDao(),
             gate = accountGate,
             currentAccount = { Clerk.user?.id },
+            authenticate = { authenticateAccount(it) },
             transaction = { block -> database.withTransaction { block() } }
         )
     }
@@ -62,9 +82,18 @@ class InterviewApplication : Application() {
             publishableKey = "pk_live_Y2xlcmsuaW50ZXJ2aWV3cy50b29scyQ"
         )
 
+        applicationScope.launch {
+            Clerk.userFlow.collect { user ->
+                sessionController.changed(Clerk.user?.id)
+            }
+        }
+
         applicationScope.launch(Dispatchers.IO) {
             val cutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
-            File(cacheDir, "account-exports").listFiles()?.filter { it.lastModified() < cutoff }?.forEach { it.delete() }
+            val exports = File(cacheDir, "account-exports")
+            // Old unpartitioned exports are disposable cache; never expose them to a new account.
+            exports.listFiles()?.filter { it.isFile }?.forEach { it.delete() }
+            exports.walkBottomUp().filter { it.isFile && it.lastModified() < cutoff }.forEach { it.delete() }
         }
 
         flagsClient = applicationScope.async {

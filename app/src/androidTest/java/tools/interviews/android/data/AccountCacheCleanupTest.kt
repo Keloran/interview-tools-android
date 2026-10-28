@@ -27,9 +27,9 @@ class AccountCacheCleanupTest {
     @After fun close() { database.close() }
 
     private suspend fun seed() {
-        database.companyDao().insert(Company(id = 1, serverId = 10, name = "Shared company"))
-        database.companyDao().insert(Company(id = 2, serverId = 20, name = "Account-only company"))
-        database.interviewDao().insert(Interview(id = 1, serverId = 100, companyId = 1,
+        database.companyDao().insert(Company(id = 1, serverId = 10, ownerId = "account-a", name = "Shared company"))
+        database.companyDao().insert(Company(id = 2, serverId = 20, ownerId = "account-a", name = "Account-only company"))
+        database.interviewDao().insert(Interview(id = 1, ownerId = "account-a", serverId = 100, companyId = 1,
             companyName = "Shared company", jobTitle = "Synced role", stage = InterviewStage.APPLIED, applicationDate = LocalDate.of(2026, 1, 1)))
         database.interviewDao().insert(Interview(id = 2, companyId = 1,
             companyName = "Shared company", jobTitle = "Guest role", stage = InterviewStage.APPLIED, applicationDate = LocalDate.of(2026, 1, 2)))
@@ -37,23 +37,23 @@ class AccountCacheCleanupTest {
 
     @Test fun deletingAccountPreservesGuestRowsAndDetachesTheirServerCompany() = runBlocking {
         seed()
-        database.clearAccountCache(clearGuests = false)
-        assertNull(database.interviewDao().getInterviewById(1))
+        database.clearAccountCache("account-a", clearGuests = false)
+        assertNull(database.interviewDao().getInterviewById(1, "account-a"))
         assertEquals("Guest role", database.interviewDao().getInterviewById(2)!!.jobTitle)
-        assertNull(database.companyDao().getCompanyById(1)!!.serverId)
-        assertNull(database.companyDao().getCompanyById(2))
-        assertTrue(database.interviewDao().getAllServerIds().isEmpty())
-        assertTrue(database.companyDao().getAllServerIds().isEmpty())
-        database.clearAccountCache(clearGuests = false) // cleanup retries are safe
+        assertNull(database.companyDao().getCompanyById(1, "legacy")!!.serverId)
+        assertNull(database.companyDao().getCompanyById(2, "account-a"))
+        assertTrue(database.interviewDao().getAllServerIds("account-a").isEmpty())
+        assertTrue(database.companyDao().getAllServerIds("account-a").isEmpty())
+        database.clearAccountCache("account-a", clearGuests = false) // cleanup retries are safe
         assertNotNull(database.interviewDao().getInterviewById(2))
     }
 
     @Test fun guestRemovalRequiresTheExplicitClearGuestsChoice() = runBlocking {
         seed()
-        database.clearAccountCache(clearGuests = true)
-        assertNull(database.interviewDao().getInterviewById(1))
+        database.clearAccountCache("account-a", clearGuests = true)
+        assertNull(database.interviewDao().getInterviewById(1, "account-a"))
         assertNull(database.interviewDao().getInterviewById(2))
-        assertTrue(database.companyDao().getAllCompaniesList().isEmpty())
+        assertTrue(database.companyDao().getAllCompaniesList("account-a").isEmpty())
     }
 
     @Test fun providerExposesOnlyThePrivateExportFolder() {

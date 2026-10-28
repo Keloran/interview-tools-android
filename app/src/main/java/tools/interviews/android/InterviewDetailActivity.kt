@@ -1,5 +1,7 @@
 package tools.interviews.android
 
+import tools.interviews.android.util.finishOnAccountChange
+import tools.interviews.android.data.account.AccountOwners
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -79,6 +81,7 @@ class InterviewDetailActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        finishOnAccountChange()
         setContentView(R.layout.activity_interview_detail)
 
         val app = application as InterviewApplication

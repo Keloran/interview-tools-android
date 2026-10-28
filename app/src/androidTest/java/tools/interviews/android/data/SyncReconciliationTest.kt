@@ -29,8 +29,8 @@ class SyncReconciliationTest {
     @Before fun setup() { db = Room.inMemoryDatabaseBuilder(InstrumentationRegistry.getInstrumentation().targetContext, InterviewDatabase::class.java).build() }
     @After fun close() { db.close() }
     private suspend fun seed() {
-        db.companyDao().insert(Company(id = 1, serverId = 10, name = "Example"))
-        for (id in listOf(1, 999)) db.interviewDao().insert(Interview(id = id.toLong(), serverId = id, companyId = 1,
+        db.companyDao().insert(Company(id = 1, serverId = 10, ownerId = "account-a", name = "Example"))
+        for (id in listOf(1, 999)) db.interviewDao().insert(Interview(id = id.toLong(), serverId = id, ownerId = "account-a", companyId = 1,
             companyName = "Example", jobTitle = "Original $id", stage = InterviewStage.APPLIED, applicationDate = LocalDate.of(2026, 1, 1)))
     }
     private fun service(remote: SyncRemote, failCommit: Boolean = false) = SyncService(db.interviewDao(), db.companyDao(),
@@ -45,8 +45,8 @@ class SyncReconciliationTest {
         service.syncAll()
         assertNull(service.syncError.value)
         assertNotNull(service.lastSyncDate.value)
-        assertEquals("Updated 1", db.interviewDao().getInterviewById(1)!!.jobTitle)
-        assertNull(db.interviewDao().getInterviewById(999))
+        assertEquals("Updated 1", db.interviewDao().getInterviewById(1, "account-a")!!.jobTitle)
+        assertNull(db.interviewDao().getInterviewById(999, "account-a"))
     }
     @Test fun failedSecondPagePreservesTheEntirePreviousCache() = runBlocking {
         seed()
@@ -55,16 +55,16 @@ class SyncReconciliationTest {
         service.syncAll()
         assertNotNull(service.syncError.value)
         assertNull(service.lastSyncDate.value)
-        assertEquals("Original 1", db.interviewDao().getInterviewById(1)!!.jobTitle)
-        assertNotNull(db.interviewDao().getInterviewById(999))
+        assertEquals("Original 1", db.interviewDao().getInterviewById(1, "account-a")!!.jobTitle)
+        assertNotNull(db.interviewDao().getInterviewById(999, "account-a"))
     }
     @Test fun failedTransactionRollsBackUpdatesAndVerifiedDeletionsTogether() = runBlocking {
         seed()
         val service = service(Remote(), failCommit = true)
         service.syncAll()
         assertNotNull(service.syncError.value)
-        assertEquals("Original 1", db.interviewDao().getInterviewById(1)!!.jobTitle)
-        assertNotNull(db.interviewDao().getInterviewById(999))
+        assertEquals("Original 1", db.interviewDao().getInterviewById(1, "account-a")!!.jobTitle)
+        assertNotNull(db.interviewDao().getInterviewById(999, "account-a"))
     }
     @Test fun accountChangeDuringDownloadLeavesOldAccountDataUntouched() = runBlocking {
         seed()
@@ -73,8 +73,8 @@ class SyncReconciliationTest {
         assertTrue(runCatching { service.syncAll() }.exceptionOrNull() is CancellationException)
         assertFalse(service.isSyncing.value)
         assertNull(service.lastSyncDate.value)
-        assertEquals("Original 1", db.interviewDao().getInterviewById(1)!!.jobTitle)
-        assertNotNull(db.interviewDao().getInterviewById(999))
+        assertEquals("Original 1", db.interviewDao().getInterviewById(1, "account-a")!!.jobTitle)
+        assertNotNull(db.interviewDao().getInterviewById(999, "account-a"))
     }
     private inner class Remote : SyncRemote {
         var failPage = false

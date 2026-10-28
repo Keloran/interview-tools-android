@@ -20,7 +20,7 @@ class AccountDataManager(
     private val token: suspend () -> String,
     private val checkpoint: DeletionCheckpoint,
     private val gate: AccountOperationGate,
-    private val clearLocal: suspend (Boolean) -> Unit,
+    private val clearLocal: suspend (String, Boolean) -> Unit,
     private val signOut: suspend (String) -> Unit,
     private val clearToken: () -> Unit,
     private val exportDirectory: File
@@ -30,11 +30,11 @@ class AccountDataManager(
     private fun pending() = checkpoint.read() ?: confirmed
     val pendingCleanup: Boolean get() = pending() != null
 
-    suspend fun delete(confirmation: String, clearGuestData: Boolean) = withContext(NonCancellable) {
+    suspend fun delete(confirmation: String, clearGuestData: Boolean, expectedAccountId: String? = currentAccount()) = withContext(NonCancellable) {
         operations.withLock {
             require(confirmation.trim().lowercase() == "delete my account") { "Type delete my account to confirm." }
             val pending = pending()
-            val accountId = pending?.accountId ?: currentAccount() ?: error("Please sign in first.")
+            val accountId = pending?.accountId ?: expectedAccountId ?: error("Please sign in first.")
             var remoteConfirmed = pending != null
             gate.closeAndRun {
                 try {
@@ -47,8 +47,9 @@ class AccountDataManager(
                     }
                     checkpoint.save(pending ?: checkNotNull(confirmed))
                     // Use the confirmed choice after restart, not a changed checkbox in the retry UI.
-                    clearLocal(pending?.clearGuestData ?: clearGuestData)
-                    exportDirectory.listFiles()?.forEach { check(it.delete()) { "Could not remove a cached export. Retry cleanup." } }
+                    clearLocal(accountId, pending?.clearGuestData ?: clearGuestData)
+                    val accountExports = File(exportDirectory, AccountOwners.exportFolder(accountId))
+                    if (accountExports.exists()) check(accountExports.deleteRecursively()) { "Could not remove cached exports. Retry cleanup." }
                     clearToken()
                     // Never sign a different account out if the Clerk session changed during the request.
                     if (currentAccount() == accountId) signOut(accountId)
@@ -69,7 +70,7 @@ class AccountDataManager(
             val accountId = currentAccount() ?: error("Please sign in to export your data.")
             val jwt = token()
             check(currentAccount() == accountId) { "Account changed. Please retry." }
-            val file = api.export(jwt, kind, exportDirectory)
+            val file = api.export(jwt, kind, File(exportDirectory, AccountOwners.exportFolder(accountId)))
             if (currentAccount() != accountId) {
                 file.delete()
                 error("Account changed. The export was discarded.")

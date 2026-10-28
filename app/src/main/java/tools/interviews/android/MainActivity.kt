@@ -37,6 +37,8 @@ import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.UpdateAvailability
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import tools.interviews.android.adapter.InterviewAdapter
@@ -85,6 +87,7 @@ class MainActivity : AppCompatActivity() {
     private var selectedDate: LocalDate? = null
     private var companyFilter: String? = null
     private var hasSyncedThisSession = false
+    private var observedAccount: String? = null
 
     private lateinit var appUpdateManager: AppUpdateManager
     private lateinit var foldableOrientationManager: FoldableOrientationManager
@@ -122,7 +125,7 @@ class MainActivity : AppCompatActivity() {
         syncService = app.syncService
 
         // Restore search filter state from configuration change (e.g., fold/unfold)
-        savedInstanceState?.getString(KEY_COMPANY_FILTER)?.let {
+        savedInstanceState?.takeIf { it.getString("company_filter_owner") == (application as InterviewApplication).ownerNow() }?.getString(KEY_COMPANY_FILTER)?.let {
             companyFilter = it
         }
 
@@ -158,13 +161,31 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString(KEY_COMPANY_FILTER, companyFilter)
+        outState.putString("company_filter_owner", (application as InterviewApplication).ownerNow())
     }
 
     private fun observeAuthAndSync() {
         // Observe user auth state and sync when signed in
         lifecycleScope.launch {
-            Clerk.userFlow.collect { user ->
+            combine(Clerk.userFlow, (application as InterviewApplication).accountGate.isBlocked) { user, blocked ->
+                if (blocked) null else user
+            }.collect { user ->
+                if (observedAccount != user?.id) {
+                    observedAccount = user?.id
+                    hasSyncedThisSession = false
+                    companyFilter = null
+                    allInterviews = emptyList()
+                    allCompanies = emptyList()
+                    pipData = emptyMap()
+                    dayBinder.pipData = pipData
+                    calendarView.notifyCalendarChanged()
+                    editSearchCompany.setText("", false)
+                    adapter.submitList(emptyList())
+                    updateCompanySearchAdapter()
+                    updateListHeader()
+                }
                 // Enable pull-to-refresh only when signed in
+                fabAddInterview.isEnabled = !(application as InterviewApplication).accountGate.isBlocked.value
                 swipeRefreshLayout.isEnabled = user != null
 
                 if (user != null && !hasSyncedThisSession) {
@@ -187,6 +208,7 @@ class MainActivity : AppCompatActivity() {
     private fun performSync() {
         lifecycleScope.launch {
             try {
+                val requestedAccount = Clerk.user?.id ?: return@launch
                 // Get the session token from Clerk
                 val session = Clerk.sessionFlow.value
                 val token = session?.fetchToken()?.successOrNull()
@@ -195,11 +217,14 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "Got auth token, starting sync...")
                     APIService.getInstance().setAuthToken(token.jwt)
                     syncService.syncAll()
-                    hasSyncedThisSession = true
+                    syncService.syncError.value?.let { throw it }
+                    hasSyncedThisSession = Clerk.user?.id == requestedAccount && syncService.syncError.value == null
                     Log.d(TAG, "Sync completed")
                 } else {
                     Log.w(TAG, "No auth token available, skipping sync")
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Sync failed: ${e.message}", e)
                 Snackbar.make(recyclerView, "Sync failed: ${e.message}", Snackbar.LENGTH_LONG).show()
@@ -238,6 +263,7 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "Pull-to-refresh: starting sync...")
                     APIService.getInstance().setAuthToken(token.jwt)
                     syncService.syncAll()
+                    syncService.syncError.value?.let { throw it }
                     Log.d(TAG, "Pull-to-refresh: sync completed")
                     Snackbar.make(recyclerView, "Sync complete", Snackbar.LENGTH_SHORT).show()
                 } else {

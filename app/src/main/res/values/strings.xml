@@ -63,7 +63,7 @@
     <string name="retry_account_cleanup">Finish account cleanup</string>
     <string name="delete_account_explanation">This permanently deletes your applications, interview stages, notes, stories, activity entries, companies, availability links, calendar feed and login. Export your data first if you want a copy. This cannot be undone.</string>
     <string name="delete_account_confirmation">Type delete my account to confirm</string>
-    <string name="delete_guest_data_choice">Also delete local-only guest interviews from this device</string>
+    <string name="delete_guest_data_choice">Also delete guest and older local-only interviews from this device</string>
     <string name="account_cleanup_explanation">Your account deletion was confirmed. Finish removing cached account data and signing out. No new deletion request will be sent.</string>
     <string name="account_deleted">Your account and cached account data have been deleted.</string>
     <string name="account_action_failed">Could not finish: %1$s</string>
@@ -72,4 +72,11 @@
     <string name="deletion_website">Account deletion on the website</string>
     <string name="cancel_account_action">Cancel</string>
     <string name="account_action_failed_title">Action not completed</string>
+    <string name="legacy_cache_notice">Older account cache is kept privately until sign-in and sync verify its owner. Older local-only records can be restored explicitly.</string>
+    <string name="import_guest_data">Import local-only interviews (%1$d)</string>
+    <string name="restore_legacy_local">Restore older local-only interviews (%1$d)</string>
+    <string name="import_guest_explanation">Move the device’s guest and older local-only interviews into %1$s and sync them? Downloaded records from older accounts are excluded. Only continue if these local-only records belong in this account.</string>
+    <string name="restore_legacy_explanation">Restore older local-only interviews to guest mode on this device? Downloaded account records stay private and are not restored. Nothing will be uploaded.</string>
+    <string name="confirm_local_import">Import</string>
+    <string name="confirm_local_restore">Restore locally</string>
 </resources>
