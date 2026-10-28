@@ -1,6 +1,7 @@
 package tools.interviews.android.data.account
 
 import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -15,9 +16,9 @@ class AccountOperationGate(initiallyClosed: Boolean = false) {
 
     suspend fun <T> run(block: suspend () -> T): T {
         val started = generation.get()
-        check(!blocked.value) { "Account cleanup is pending. Open Settings to finish it." }
+        if (blocked.value) throw CancellationException("Account cleanup is pending. Open Settings to finish it.")
         return mutex.withLock {
-            check(!blocked.value && started == generation.get()) { "Account changed while this operation was waiting." }
+            if (blocked.value || started != generation.get()) throw CancellationException("Account changed while this operation was waiting.")
             block()
         }
     }

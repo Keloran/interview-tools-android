@@ -1,5 +1,7 @@
 package tools.interviews.android.data.account
 
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import java.io.File
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,33 +30,35 @@ class AccountDataManager(
     private fun pending() = checkpoint.read() ?: confirmed
     val pendingCleanup: Boolean get() = pending() != null
 
-    suspend fun delete(confirmation: String, clearGuestData: Boolean) = operations.withLock {
-        require(confirmation.trim().lowercase() == "delete my account") { "Type delete my account to confirm." }
-        val pending = pending()
-        val accountId = pending?.accountId ?: currentAccount() ?: error("Please sign in first.")
-        var remoteConfirmed = pending != null
-        gate.closeAndRun {
-            try {
-                if (!remoteConfirmed) {
-                    val jwt = token()
-                    check(currentAccount() == accountId) { "Account changed. Please retry from Settings." }
-                    api.deleteAccount(jwt, confirmation)
-                    remoteConfirmed = true
-                    confirmed = PendingDeletion(accountId, clearGuestData)
+    suspend fun delete(confirmation: String, clearGuestData: Boolean) = withContext(NonCancellable) {
+        operations.withLock {
+            require(confirmation.trim().lowercase() == "delete my account") { "Type delete my account to confirm." }
+            val pending = pending()
+            val accountId = pending?.accountId ?: currentAccount() ?: error("Please sign in first.")
+            var remoteConfirmed = pending != null
+            gate.closeAndRun {
+                try {
+                    if (!remoteConfirmed) {
+                        val jwt = token()
+                        check(currentAccount() == accountId) { "Account changed. Please retry from Settings." }
+                        api.deleteAccount(jwt, confirmation)
+                        remoteConfirmed = true
+                        confirmed = PendingDeletion(accountId, clearGuestData)
+                    }
+                    checkpoint.save(pending ?: checkNotNull(confirmed))
+                    // Use the confirmed choice after restart, not a changed checkbox in the retry UI.
+                    clearLocal(pending?.clearGuestData ?: clearGuestData)
+                    exportDirectory.listFiles()?.forEach { check(it.delete()) { "Could not remove a cached export. Retry cleanup." } }
+                    clearToken()
+                    // Never sign a different account out if the Clerk session changed during the request.
+                    if (currentAccount() == accountId) signOut(accountId)
+                    checkpoint.clear()
+                    confirmed = null
+                    gate.reopen()
+                } catch (error: Exception) {
+                    if (!remoteConfirmed) gate.reopen()
+                    throw error
                 }
-                checkpoint.save(pending ?: checkNotNull(confirmed))
-                // Use the confirmed choice after restart, not a changed checkbox in the retry UI.
-                clearLocal(pending?.clearGuestData ?: clearGuestData)
-                exportDirectory.listFiles()?.forEach { check(it.delete()) { "Could not remove a cached export. Retry cleanup." } }
-                clearToken()
-                // Never sign a different account out if the Clerk session changed during the request.
-                if (currentAccount() == accountId) signOut(accountId)
-                checkpoint.clear()
-                confirmed = null
-                gate.reopen()
-            } catch (error: Exception) {
-                if (!remoteConfirmed) gate.reopen()
-                throw error
             }
         }
     }

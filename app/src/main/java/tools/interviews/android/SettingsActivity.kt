@@ -9,6 +9,8 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.checkbox.MaterialCheckBox
 import tools.interviews.android.data.account.ExportKind
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import android.os.Bundle
 import android.util.Log
 import android.view.GestureDetector
@@ -225,6 +227,7 @@ class SettingsActivity : AppCompatActivity() {
         val currentUser = user ?: Clerk.user
         val pending = accountData.pendingCleanup
         sectionAccountData.isVisible = currentUser != null || pending
+        findViewById<TextView>(R.id.accountActionStatus).isVisible = accountActionBusy
         exportApplications.isEnabled = currentUser != null && !pending && !accountActionBusy
         exportStories.isEnabled = currentUser != null && !pending && !accountActionBusy
         deleteAccount.isEnabled = !accountActionBusy
@@ -327,6 +330,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun deleteAccountData(confirmation: String, clearGuests: Boolean) {
         runAccountAction {
             accountData.delete(confirmation, clearGuests)
+            currentCoroutineContext().ensureActive()
             MaterialAlertDialogBuilder(this).setMessage(R.string.account_deleted)
                 .setCancelable(false).setPositiveButton(android.R.string.ok) { _, _ ->
                     startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
@@ -337,6 +341,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun exportData(kind: ExportKind) {
         runAccountAction {
             val file = accountData.export(kind)
+            currentCoroutineContext().ensureActive()
             val uri = FileProvider.getUriForFile(this, "$packageName.exports", file)
             val share = Intent(Intent.ACTION_SEND).setType("text/csv").putExtra(Intent.EXTRA_STREAM, uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

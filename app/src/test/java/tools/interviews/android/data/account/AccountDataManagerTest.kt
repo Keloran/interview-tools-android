@@ -5,12 +5,17 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import java.io.File
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AccountDataManagerTest {
     @get:Rule val temporary = TemporaryFolder()
     private val api = mockk<AccountDataApi>()
@@ -142,6 +147,21 @@ class AccountDataManagerTest {
         assertTrue(runCatching { manager().delete("delete my account", false) }.isFailure)
         coVerify(exactly = 0) { api.export(any(), any(), any()) }
         coVerify(exactly = 0) { api.deleteAccount(any(), any()) }
+    }
+
+    @Test fun `activity cancellation cannot interrupt confirmed deletion cleanup`() = runTest {
+        val requestStarted = CompletableDeferred<Unit>()
+        val response = CompletableDeferred<Unit>()
+        coEvery { api.deleteAccount(any(), any()) } coAnswers { requestStarted.complete(Unit); response.await() }
+        val deletion = launch { manager().delete("delete my account", false) }
+        requestStarted.await()
+        deletion.cancel() // Activity destroyed while its confirmed request is in flight.
+        response.complete(Unit)
+        deletion.join()
+        assertEquals(listOf(false), clears)
+        assertEquals(1, signedOut)
+        assertNull(checkpoint.value)
+        assertFalse(gate.isBlocked.value)
     }
 
     private class MemoryCheckpoint : DeletionCheckpoint {
