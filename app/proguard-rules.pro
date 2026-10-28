@@ -7,3 +7,4 @@
 -keep,allowoptimization class tools.interviews.android.data.api.APIMetadata { *; }
 -keep,allowoptimization class tools.interviews.android.data.api.CreateInterviewRequest { *; }
 -keep,allowoptimization class tools.interviews.android.data.api.UpdateInterviewRequest { *; }
+-keep,allowoptimization class tools.interviews.android.data.api.ErrorResponse { *; }
