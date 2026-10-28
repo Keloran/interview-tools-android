@@ -137,7 +137,7 @@ class EditInterviewActivity : AppCompatActivity() {
                 setupDropdowns()
                 setupDateTimePickers()
                 setupValidation()
-                updateInterviewDetailsVisibility()
+                updateInterviewDetailsVisibility(clearHiddenFields = false)
             } ?: finish()
         }
     }
@@ -198,14 +198,14 @@ class EditInterviewActivity : AppCompatActivity() {
             validateForm()
         }
         // Set initial visibility based on loaded method
-        updateMeetingLinkVisibility()
+        updateMeetingLinkVisibility(clearHiddenFields = false)
     }
 
-    private fun updateMeetingLinkVisibility() {
+    private fun updateMeetingLinkVisibility(clearHiddenFields: Boolean = true) {
         // Only show meeting link for Video Call
         val showMeetingLink = selectedMethod == InterviewMethod.VIDEO_CALL
         layoutMeetingLink.isVisible = showMeetingLink
-        if (!showMeetingLink) {
+        if (!showMeetingLink && clearHiddenFields) {
             editMeetingLink.text?.clear()
         }
     }
@@ -220,7 +220,7 @@ class EditInterviewActivity : AppCompatActivity() {
         editCompanyName.threshold = 1
     }
 
-    private fun updateInterviewDetailsVisibility() {
+    private fun updateInterviewDetailsVisibility(clearHiddenFields: Boolean = true) {
         val isTechnicalTest = selectedStage == InterviewStage.TECHNICAL_TEST
         val isAppliedOrOffer = selectedStage == InterviewStage.APPLIED ||
                               selectedStage == InterviewStage.OFFER
@@ -232,7 +232,7 @@ class EditInterviewActivity : AppCompatActivity() {
         // Show deadline section only for Technical Test
         sectionDeadline.isVisible = isTechnicalTest
 
-        if (!showInterviewDetails && !isTechnicalTest) {
+        if (!showInterviewDetails && !isTechnicalTest && clearHiddenFields) {
             // Clear interview details if hiding (and not switching to technical test)
             selectedDateTime = null
             selectedMethod = null
@@ -242,7 +242,7 @@ class EditInterviewActivity : AppCompatActivity() {
             editMeetingLink.text?.clear()
         }
 
-        if (!isTechnicalTest) {
+        if (!isTechnicalTest && clearHiddenFields) {
             // Clear deadline details if not Technical Test
             selectedDeadline = null
             editDeadline.text?.clear()
@@ -352,10 +352,12 @@ class EditInterviewActivity : AppCompatActivity() {
 
         val interviewDate = selectedDateTime
 
+        val original = originalInterview ?: return
         val deadline = if (isTechnicalTest && selectedDeadline != null) {
-            selectedDeadline!!.atTime(23, 59)
+            originalInterview?.deadline?.takeIf { it.toLocalDate() == selectedDeadline }
+                ?: selectedDeadline!!.atTime(23, 59)
         } else {
-            null
+            original.deadline.takeIf { selectedStage == original.stage }
         }
 
         val link = if (isTechnicalTest) {
@@ -366,9 +368,7 @@ class EditInterviewActivity : AppCompatActivity() {
 
         val jobListing = editJobListing.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
 
-        val updatedInterview = Interview(
-            id = interviewId,
-            ownerId = originalInterview?.ownerId ?: return,
+        val updatedInterview = original.copy(
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = editCompanyName.text.toString().trim(),
             stage = selectedStage,
@@ -384,7 +384,12 @@ class EditInterviewActivity : AppCompatActivity() {
         )
 
         lifecycleScope.launch {
-            repository.update(updatedInterview)
+            val company = if (updatedInterview.companyName == original.companyName) {
+                original.companyId
+            } else {
+                repository.findOrCreateCompany(updatedInterview.companyName, original.ownerId).id
+            }
+            repository.update(updatedInterview.copy(companyId = company))
             finish()
         }
     }
