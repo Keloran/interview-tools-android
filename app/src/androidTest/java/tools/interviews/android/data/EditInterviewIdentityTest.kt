@@ -51,7 +51,10 @@ class EditInterviewIdentityTest {
             clientCompany = "Private client", metadataJSON = "{\"futureField\":\"keep\"}",
             interviewDate = LocalDateTime.of(2026, 2, 1, 10, 30),
             deadline = LocalDateTime.of(2026, 2, 2, 14, 15), link = "https://example.com/meeting",
-            jobListing = "https://example.com/job", notes = "Original notes")
+            jobListing = "https://example.com/job", notes = "Original notes",
+            applicationId = 77, parentId = 100, durationMinutes = 45, serverStageId = 1,
+            serverMethodId = 50, serverMethodName = "Zoom", stageRecognized = true,
+            method = tools.interviews.android.model.InterviewMethod.VIDEO_CALL)
         val id = app.database.interviewDao().insert(original)
         ids += id
         val intent = Intent(context, EditInterviewActivity::class.java)

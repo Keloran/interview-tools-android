@@ -27,7 +27,7 @@ abstract class InterviewDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION = 8
+        const val VERSION = 9
         @Volatile
         private var INSTANCE: InterviewDatabase? = null
 
@@ -200,7 +200,19 @@ abstract class InterviewDatabase : RoomDatabase() {
             }
         }
 
-        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (column in listOf("applicationId", "parentId", "previousLocalId", "durationMinutes", "serverStageId", "serverMethodId")) {
+                    db.execSQL("ALTER TABLE interviews ADD COLUMN $column INTEGER")
+                }
+                db.execSQL("ALTER TABLE interviews ADD COLUMN serverMethodName TEXT")
+                for (column in listOf("stageRecognized", "stageSelectionChanged", "methodSelectionChanged")) {
+                    db.execSQL("ALTER TABLE interviews ADD COLUMN $column INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+        }
+
+        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
 
         fun getDatabase(context: Context): InterviewDatabase {
             return INSTANCE ?: synchronized(this) {

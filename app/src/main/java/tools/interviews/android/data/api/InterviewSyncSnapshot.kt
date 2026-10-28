@@ -5,6 +5,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
 interface SyncRemote {
+    suspend fun stages(): List<APIStage> = emptyList()
     suspend fun companies(): List<APICompany>
     suspend fun interviews(take: Int, skip: Int): List<APIInterview>
     /** Null means an authoritative 404, never a transport/decoding/authentication failure. */

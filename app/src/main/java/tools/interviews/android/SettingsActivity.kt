@@ -23,8 +23,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.clerk.api.Clerk
-import com.clerk.api.network.serialization.successOrNull
-import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
@@ -34,7 +32,6 @@ import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.UpdateAvailability
 import kotlinx.coroutines.launch
-import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.util.FoldableOrientationManager
 import java.time.format.DateTimeFormatter
@@ -313,7 +310,6 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-
     private fun observeLocalData() {
         val repository = (application as InterviewApplication).repository
         lifecycleScope.launch { repository.localImportCount.collect { localImportCount = it; updateAuthUI() } }
@@ -419,22 +415,12 @@ class SettingsActivity : AppCompatActivity() {
             try {
                 textLastSynced.text = "Syncing..."
 
-                // Get the session token from Clerk
-                val session = Clerk.sessionFlow.value
-                val token = session?.fetchToken()?.successOrNull()
+                Log.d(TAG, "Starting sync...")
+                syncService.syncAll()
+                syncService.syncError.value?.let { throw it }
 
-                if (token != null) {
-                    Log.d(TAG, "Got auth token, starting sync...")
-                    APIService.getInstance().setAuthToken(token.jwt)
-                    syncService.syncAll()
-                    syncService.syncError.value?.let { throw it }
+                Snackbar.make(itemSyncNow, "Sync completed", Snackbar.LENGTH_SHORT).show()
 
-                    Snackbar.make(itemSyncNow, "Sync completed", Snackbar.LENGTH_SHORT).show()
-                } else {
-                    Log.w(TAG, "No auth token available")
-                    textLastSynced.text = "Sync failed"
-                    Snackbar.make(itemSyncNow, "Unable to get auth token", Snackbar.LENGTH_SHORT).show()
-                }
             } catch (e: Exception) {
                 Log.e(TAG, "Sync failed: ${e.message}", e)
                 textLastSynced.text = "Sync failed"

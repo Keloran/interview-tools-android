@@ -18,7 +18,10 @@ data class APIInterview(
     val outcome: String?,
     val notes: String?,
     val metadata: APIMetadata?,
-    val link: String?
+    val link: String?,
+    val applicationId: Int? = null,
+    val parentId: Int? = null,
+    val durationMinutes: Int? = null
 )
 
 data class APICompany(
@@ -55,7 +58,10 @@ data class CreateInterviewRequest(
     val locationType: String?,
     val interviewLink: String?,
     val notes: String?,
-    val offerDeadline: String? = null
+    val offerDeadline: String? = null,
+    val previousInterviewId: Int? = null,
+    val durationMinutes: Int? = null,
+    val stageMethodId: Int? = null
 )
 
 data class UpdateInterviewRequest(
@@ -65,7 +71,10 @@ data class UpdateInterviewRequest(
     val deadline: String?,
     val interviewer: String?,
     val notes: String?,
-    val link: String?
+    val link: String?,
+    val stageId: Int? = null,
+    val stageMethodId: Int? = null,
+    val durationMinutes: Int? = null
 )
 
 // MARK: - API Error

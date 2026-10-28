@@ -47,5 +47,15 @@ data class Interview(
     val deadlineInstant: Instant? = null,
     val offerRespondBy: LocalDate? = null,
     val serverStageName: String? = null,
-    val serverOutcomeName: String? = null
+    val serverOutcomeName: String? = null,
+    val applicationId: Int? = null,
+    val parentId: Int? = null,
+    val previousLocalId: Long? = null,
+    val durationMinutes: Int? = null,
+    val serverStageId: Int? = null,
+    val serverMethodId: Int? = null,
+    val serverMethodName: String? = null,
+    @ColumnInfo(defaultValue = "0") val stageRecognized: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val stageSelectionChanged: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val methodSelectionChanged: Boolean = false
 )

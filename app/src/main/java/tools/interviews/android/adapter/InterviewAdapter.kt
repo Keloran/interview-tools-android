@@ -98,9 +98,9 @@ class InterviewAdapter(
             badgeStage.text = interview.stageLabel
 
             // Method badge (only show if method is set)
-            badgeMethod.isVisible = interview.method != null
-            interview.method?.let {
-                badgeMethod.text = it.displayName
+            badgeMethod.isVisible = interview.methodLabel != null
+            interview.methodLabel?.let {
+                badgeMethod.text = it
             }
 
             // Reset card position

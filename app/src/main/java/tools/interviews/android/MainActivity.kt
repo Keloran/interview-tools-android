@@ -28,8 +28,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.clerk.api.Clerk
-import com.clerk.api.network.serialization.successOrNull
-import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -46,7 +44,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import tools.interviews.android.adapter.InterviewAdapter
 import tools.interviews.android.data.InterviewRepository
-import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
@@ -212,20 +209,13 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val requestedAccount = Clerk.user?.id ?: return@launch
-                // Get the session token from Clerk
-                val session = Clerk.sessionFlow.value
-                val token = session?.fetchToken()?.successOrNull()
 
-                if (token != null) {
-                    Log.d(TAG, "Got auth token, starting sync...")
-                    APIService.getInstance().setAuthToken(token.jwt)
-                    syncService.syncAll()
-                    syncService.syncError.value?.let { throw it }
-                    hasSyncedThisSession = Clerk.user?.id == requestedAccount && syncService.syncError.value == null
-                    Log.d(TAG, "Sync completed")
-                } else {
-                    Log.w(TAG, "No auth token available, skipping sync")
-                }
+                Log.d(TAG, "Starting sync...")
+                syncService.syncAll()
+                syncService.syncError.value?.let { throw it }
+                hasSyncedThisSession = Clerk.user?.id == requestedAccount && syncService.syncError.value == null
+                Log.d(TAG, "Sync completed")
+
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (e: Exception) {
@@ -259,20 +249,13 @@ class MainActivity : AppCompatActivity() {
     private fun performPullToRefreshSync() {
         lifecycleScope.launch {
             try {
-                val session = Clerk.sessionFlow.value
-                val token = session?.fetchToken()?.successOrNull()
 
-                if (token != null) {
-                    Log.d(TAG, "Pull-to-refresh: starting sync...")
-                    APIService.getInstance().setAuthToken(token.jwt)
-                    syncService.syncAll()
-                    syncService.syncError.value?.let { throw it }
-                    Log.d(TAG, "Pull-to-refresh: sync completed")
-                    Snackbar.make(recyclerView, "Sync complete", Snackbar.LENGTH_SHORT).show()
-                } else {
-                    Log.w(TAG, "Pull-to-refresh: no auth token available")
-                    Snackbar.make(recyclerView, "Unable to sync - please sign in again", Snackbar.LENGTH_SHORT).show()
-                }
+                Log.d(TAG, "Pull-to-refresh: starting sync...")
+                syncService.syncAll()
+                syncService.syncError.value?.let { throw it }
+                Log.d(TAG, "Pull-to-refresh: sync completed")
+                Snackbar.make(recyclerView, "Sync complete", Snackbar.LENGTH_SHORT).show()
+
             } catch (e: Exception) {
                 Log.e(TAG, "Pull-to-refresh sync failed: ${e.message}", e)
                 Snackbar.make(recyclerView, "Sync failed: ${e.message}", Snackbar.LENGTH_LONG).show()
@@ -390,14 +373,10 @@ class MainActivity : AppCompatActivity() {
             // If interview has been synced to server, update remotely too
             if (interview.serverId != null) {
                 try {
-                    val session = Clerk.sessionFlow.value
-                    val token = session?.fetchToken()?.successOrNull()
 
-                    if (token != null) {
-                        APIService.getInstance().setAuthToken(token.jwt)
-                        syncService.updateRemoteInterview(interview.serverId, updatedInterview)
-                        Log.d(TAG, "Updated interview outcome on server: ${newOutcome.name}")
-                    }
+                    syncService.updateRemoteInterview(interview.serverId, updatedInterview)
+                    Log.d(TAG, "Updated interview outcome on server: ${newOutcome.name}")
+
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to update outcome on server: ${e.message}", e)
                     // Local update already succeeded, so don't show error to user

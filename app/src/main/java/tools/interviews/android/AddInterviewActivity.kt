@@ -1,5 +1,10 @@
 package tools.interviews.android
 
+import tools.interviews.android.data.api.InterviewCatalog
+import tools.interviews.android.data.api.APIStage
+import tools.interviews.android.data.api.APIStageMethod
+import tools.interviews.android.data.api.APIService
+import tools.interviews.android.model.methodLabel
 import tools.interviews.android.util.confirmMeetingTime
 import tools.interviews.android.model.InterviewTimes
 import tools.interviews.android.model.displayInterviewDate
@@ -19,8 +24,6 @@ import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.clerk.api.Clerk
-import com.clerk.api.network.serialization.successOrNull
-import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.datepicker.MaterialDatePicker
@@ -31,7 +34,6 @@ import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
 import kotlinx.coroutines.launch
 import tools.interviews.android.data.InterviewRepository
-import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewMethod
@@ -80,9 +82,18 @@ class AddInterviewActivity : AppCompatActivity() {
     private lateinit var sectionDeadline: LinearLayout
     private lateinit var editDeadline: TextInputEditText
     private lateinit var editTestLink: TextInputEditText
+    private lateinit var editDuration: TextInputEditText
     private lateinit var editNotes: TextInputEditText
 
     private var selectedStage: InterviewStage = InterviewStage.APPLIED
+    private var catalog = InterviewCatalog.fallback()
+    private var selectedStageId: Int? = null
+    private var selectedStageName: String? = null
+    private var selectedStageRecognized = false
+    private var stageChanged = false
+    private var selectedMethodId: Int? = null
+    private var selectedMethodName: String? = null
+    private var methodChanged = false
     private var selectedMethod: InterviewMethod? = null
     private var selectedDateTime: LocalDateTime? = null
     private var selectedInstant: Instant? = null
@@ -122,6 +133,7 @@ class AddInterviewActivity : AppCompatActivity() {
         setupDateTimePickers()
         setupValidation()
         updateInterviewDetailsVisibility()
+        loadServerCatalog()
     }
 
     private fun setupViews() {
@@ -141,6 +153,7 @@ class AddInterviewActivity : AppCompatActivity() {
         editDeadline = findViewById(R.id.editDeadline)
         editTestLink = findViewById(R.id.editTestLink)
         editNotes = findViewById(R.id.editNotes)
+        editDuration = findViewById(R.id.editDuration)
     }
 
     private fun setupToolbar() {
@@ -198,36 +211,61 @@ class AddInterviewActivity : AppCompatActivity() {
     }
 
     private fun setupDropdowns() {
-        // Stage dropdown - exclude Applied in next stage mode
-        val availableStages = if (isNextStageMode) {
-            InterviewStage.entries.filter { it != InterviewStage.APPLIED && it != InterviewStage.UNKNOWN }
-        } else {
-            InterviewStage.entries.filter { it != InterviewStage.UNKNOWN }
-        }
-        val stages = availableStages.map { it.displayName }
-        val stageAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, stages)
-        dropdownStage.setAdapter(stageAdapter)
-        dropdownStage.setText(selectedStage.displayName, false)
+        val stages = catalog.stages.filter { !isNextStageMode || InterviewCatalog.stageKind(it.stage) != InterviewStage.APPLIED }
+        dropdownStage.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, stages.map { it.stage }))
+        dropdownStage.setText(selectedStageName ?: selectedStage.displayName, false)
         dropdownStage.setOnItemClickListener { _, _, position, _ ->
-            selectedStage = availableStages[position]
+            val option = stages[position]
+            selectedStage = InterviewCatalog.stageKind(option.stage)
+            selectedStageId = option.id.takeIf { it > 0 }
+            selectedStageName = option.stage
+            selectedStageRecognized = option.id > 0
+            stageChanged = true
             updateInterviewDetailsVisibility()
             validateForm()
         }
-
-        // Method dropdown
-        val methods = InterviewMethod.entries.map { it.displayName }
-        val methodAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, methods)
-        dropdownMethod.setAdapter(methodAdapter)
+        dropdownMethod.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, catalog.methods.map { it.method }))
+        dropdownMethod.setText(selectedMethodName ?: selectedMethod?.displayName ?: "", false)
         dropdownMethod.setOnItemClickListener { _, _, position, _ ->
-            selectedMethod = InterviewMethod.entries[position]
+            val option = catalog.methods[position]
+            selectedMethod = InterviewCatalog.methodKind(option.method)
+            selectedMethodId = option.id.takeIf { it > 0 }
+            selectedMethodName = option.method
+            methodChanged = true
             updateMeetingLinkVisibility()
             validateForm()
+        }
+        updateMeetingLinkVisibility()
+    }
+
+    private fun loadServerCatalog() {
+        val app = application as InterviewApplication
+        val expected = app.ownerNow()
+        if (expected == AccountOwners.GUEST) return
+        lifecycleScope.launch {
+            try {
+                val loaded = app.accountGate.run {
+                    app.authenticateAccount(expected)
+                    InterviewCatalog(APIService.getInstance().fetchStages(), APIService.getInstance().fetchStageMethods())
+                }
+                val stages = loaded.stages
+                val methods = loaded.methods
+                if (app.ownerNow() != expected) return@launch
+                if (stages.isNotEmpty()) catalog = InterviewCatalog(stages, methods.ifEmpty { catalog.methods })
+                setupDropdowns()
+                dropdownStage.isEnabled = true
+                dropdownMethod.isEnabled = true
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                com.google.android.material.snackbar.Snackbar.make(buttonSave, "Connect to load current stage and meeting options.", com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show()
+            }
         }
     }
 
     private fun updateMeetingLinkVisibility() {
         // Only show meeting link for Video Call
-        val showMeetingLink = selectedMethod == InterviewMethod.VIDEO_CALL
+        val showMeetingLink = selectedMethod == InterviewMethod.VIDEO_CALL || (selectedMethod == null && selectedMethodName != null)
         layoutMeetingLink.isVisible = showMeetingLink
         if (!showMeetingLink) {
             editMeetingLink.text?.clear()
@@ -276,6 +314,8 @@ class AddInterviewActivity : AppCompatActivity() {
             selectedDateTime = null
             selectedInstant = null
             selectedMethod = null
+            selectedMethodId = null
+            selectedMethodName = null
             editInterviewDateTime.text?.clear()
             dropdownMethod.text?.clear()
             editInterviewer.text?.clear()
@@ -367,6 +407,7 @@ class AddInterviewActivity : AppCompatActivity() {
     private fun setupValidation() {
         editCompanyName.doAfterTextChanged { validateForm() }
         editJobTitle.doAfterTextChanged { validateForm() }
+        editDuration.doAfterTextChanged { validateForm() }
     }
 
     private fun validateForm() {
@@ -387,11 +428,14 @@ class AddInterviewActivity : AppCompatActivity() {
                 // For other stages, need interview details (date/time and method)
                 hasBasicInfo &&
                     selectedDateTime != null &&
-                    selectedMethod != null
+                    (selectedMethod != null || selectedMethodName != null)
             }
         }
 
-        buttonSave.isEnabled = isValid
+        val duration = editDuration.text?.toString()?.trim().orEmpty()
+        val validDuration = duration.isEmpty() || duration.toIntOrNull() in 15..480
+        editDuration.error = if (validDuration) null else "Enter 15–480 minutes"
+        buttonSave.isEnabled = isValid && validDuration
     }
 
     private fun saveInterview() {
@@ -443,7 +487,13 @@ class AddInterviewActivity : AppCompatActivity() {
             link = link,
             jobListing = jobListing,
             notes = editNotes.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
-            metadataJSON = originalMetadataJSON
+            metadataJSON = originalMetadataJSON,
+            previousLocalId = previousInterviewId,
+            durationMinutes = editDuration.text?.toString()?.trim()?.toIntOrNull(),
+            serverStageId = selectedStageId, serverStageName = selectedStageName,
+            stageRecognized = selectedStageRecognized, stageSelectionChanged = stageChanged,
+            serverMethodId = selectedMethodId, serverMethodName = selectedMethodName,
+            methodSelectionChanged = methodChanged
         )
 
         // Disable save button and show saving state
@@ -452,6 +502,7 @@ class AddInterviewActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
+                require(!isNextStageMode || previousInterviewId != null) { "Choose the previous stage again." }
                 // Step 1: Find or create company locally
                 val localCompany = repository.findOrCreateCompany(companyName, screenOwner)
                 Log.d(TAG, "Company '${companyName}' has local id: ${localCompany.id}, serverId: ${localCompany.serverId}")
@@ -461,46 +512,16 @@ class AddInterviewActivity : AppCompatActivity() {
                 val localId = repository.insert(interviewWithCompany)
                 Log.d(TAG, "Interview saved locally with id: $localId")
 
-                // Step 3: If user is signed in, push to server
-                val user = Clerk.user
-                if (user != null) {
+                // The sync service resolves and acknowledges parent stages before their children.
+                if (Clerk.user != null) {
                     try {
-                        val session = Clerk.sessionFlow.value
-                        val token = session?.fetchToken()?.successOrNull()
-
-                        if (token != null) {
-                            APIService.getInstance().setAuthToken(token.jwt)
-
-                            // Get the interview with local ID for pushing
-                            val savedInterview = interviewWithCompany.copy(id = localId)
-
-                            // Push to server
-                            val apiInterview = syncService.pushInterview(savedInterview)
-                            Log.d(TAG, "Interview pushed to server with id: ${apiInterview.id}")
-                            Log.d(TAG, "Server returned company id: ${apiInterview.company.id}")
-
-                            // Step 4: Update local company with server ID (if it didn't have one)
-                            if (localCompany.serverId == null) {
-                                repository.updateCompanyServerId(localCompany.id, apiInterview.company.id)
-                                Log.d(TAG, "Updated local company with server id: ${apiInterview.company.id}")
-                            }
-
-                            // Step 5: Update local interview with server ID
-                            val updatedInterview = savedInterview.copy(serverId = apiInterview.id)
-                            repository.update(updatedInterview)
-                            Log.d(TAG, "Local interview updated with server id: ${apiInterview.id}")
-
-                            Snackbar.make(buttonSave, "Interview saved and synced", Snackbar.LENGTH_SHORT).show()
-                        } else {
-                            Log.w(TAG, "No auth token available, interview saved locally only")
-                        }
+                        syncService.syncAll()
+                        syncService.syncError.value?.let { throw it }
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                        throw cancelled
                     } catch (e: Exception) {
-                        // Server push failed, but local save succeeded - that's ok for local-first
-                        Log.e(TAG, "Failed to push to server: ${e.message}", e)
-                        Snackbar.make(buttonSave, "Saved locally (sync failed)", Snackbar.LENGTH_SHORT).show()
+                        Snackbar.make(buttonSave, "Saved locally (sync needs retry)", Snackbar.LENGTH_LONG).show()
                     }
-                } else {
-                    Log.d(TAG, "User not signed in, interview saved locally only")
                 }
 
                 // If this is next stage mode, mark the previous interview as passed
@@ -513,7 +534,7 @@ class AddInterviewActivity : AppCompatActivity() {
                             Log.d(TAG, "Previous interview $prevId marked as PASSED")
 
                             // Sync to server if previously synced
-                            if (previousInterview.serverId != null && Clerk.user != null) {
+                            if (previousInterview.serverId != null && repository.getById(localId)?.serverId != null && Clerk.user != null) {
                                 try {
                                     syncService.updateRemoteInterview(previousInterview.serverId, updatedPrevious)
                                     Log.d(TAG, "Previous interview updated on server")

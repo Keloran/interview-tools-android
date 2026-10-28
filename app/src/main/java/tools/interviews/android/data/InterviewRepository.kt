@@ -35,6 +35,9 @@ class InterviewRepository(
     }
     suspend fun insert(interview: Interview): Long = gate.run {
         checkOwner(interview.ownerId)
+        interview.previousLocalId?.let {
+            require(interviewDao.getInterviewById(it, interview.ownerId) != null) { "Previous stage belongs to another account or is missing." }
+        }
         require(interview.id == 0L) { "Use update for an existing interview." }
         interview.companyId?.let {
             require(companyDao.getCompanyById(it, interview.ownerId) != null) { "Company belongs to another account." }
