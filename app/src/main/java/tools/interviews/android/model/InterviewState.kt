@@ -16,6 +16,6 @@ fun Interview.outcomeWireValue(): String? = outcome.takeUnless { it == Interview
 val Interview.syncLabel: String? get() = when {
     ownerId == tools.interviews.android.data.account.AccountOwners.GUEST -> null
     syncIssue != null -> "Sync needs retry"
-    serverId == null || pendingChanges != null -> "Waiting to sync"
+    serverId == null || pendingChanges != null || pendingRecruiterJSON != null -> "Waiting to sync"
     else -> null
 }

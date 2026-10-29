@@ -191,7 +191,87 @@ class PendingSyncTest {
         assertNull(db.interviewDao().getInterviewById(1, owner.value)!!.pendingChanges)
     }
 
+    @Test fun recruiterChangesSurviveRestartAndRetryWithoutRepostingInterview() = runBlocking {
+        val original = seed()
+        val contact = RecruiterContact(true, "Sam", "sam@example.com", "").json()
+        repository().saveChanges(original, original.copy(recruiterContactJSON=contact))
+        writes.failRecruiter = true
+        assertEquals(1, engine().sync(owner.value).failed)
+        db.close(); reopen()
+        assertEquals(contact, db.interviewDao().getInterviewById(1,owner.value)!!.pendingRecruiterJSON)
+        writes.failRecruiter = false
+        assertEquals(0, engine().sync(owner.value).failed)
+        assertNull(db.interviewDao().getInterviewById(1,owner.value)!!.pendingRecruiterJSON)
+        assertEquals("Sam", writes.recruiterCalls.last().second.get("recruiterName").asString)
+        assertTrue(writes.creates.isEmpty())
+        assertTrue(writes.patches.isEmpty())
+    }
+    @Test fun acknowledgedCreateSurvivesRecruiterFailureAndDoesNotCreateAgain() = runBlocking {
+        val contact = RecruiterContact(true,"Sam","sam@example.com","").json()
+        val id = repository().insert(row(id=0,serverId=null).copy(recruiterContactJSON=contact,pendingRecruiterJSON=contact))
+        writes.failRecruiter = true
+        assertEquals(1,engine().sync(owner.value).failed)
+        assertNotNull(db.interviewDao().getInterviewById(id,owner.value)!!.serverId)
+        db.close(); reopen(); writes.failRecruiter=false
+        assertEquals(0,engine().sync(owner.value).failed)
+        assertEquals(1,writes.creates.size)
+        assertEquals(77,writes.recruiterCalls.last().first)
+    }
+    @Test fun latestApplicationContactWinsAcrossStagesWithoutClearingOtherEdits() = runBlocking {
+        val old = RecruiterContact(true,"Old","","").json()
+        val first = seed(row().copy(recruiterContactJSON=old,pendingRecruiterJSON=old,pendingChanges="{\"notes\":\"Offline notes\"}"))
+        val second = seed(row(id=2,serverId=11).copy(recruiterContactJSON=old))
+        val fresh = RecruiterContact(true,"New","","").json()
+        repository().saveChanges(second,second.copy(recruiterContactJSON=fresh))
+        assertEquals(fresh,db.interviewDao().getInterviewById(first.id,owner.value)!!.recruiterContactJSON)
+        assertNull(db.interviewDao().getInterviewById(first.id,owner.value)!!.pendingRecruiterJSON)
+        assertNotNull(db.interviewDao().getInterviewById(first.id,owner.value)!!.pendingChanges)
+        assertEquals(0,engine().sync(owner.value).failed)
+        assertEquals(1,writes.recruiterCalls.size)
+        assertEquals("New",writes.recruiterCalls.single().second.get("recruiterName").asString)
+    }
+    @Test fun lateRecruiterAcknowledgementCannotClearANewerContact() = runBlocking {
+        val original = seed()
+        val first = RecruiterContact(true,"First","","").json()
+        repository().saveChanges(original,original.copy(recruiterContactJSON=first))
+        writes.afterRecruiter = {
+            val latest = db.interviewDao().getInterviewById(1,owner.value)!!
+            db.interviewDao().update(latest.copy(recruiterContactJSON=RecruiterContact(true,"Second","","").json(), pendingRecruiterJSON=RecruiterContact(true,"Second","","").json(),localRevision=latest.localRevision+1))
+        }
+        assertEquals(1,engine().sync(owner.value).remaining)
+        assertNotNull(db.interviewDao().getInterviewById(1,owner.value)!!.pendingRecruiterJSON)
+        writes.afterRecruiter=null
+        assertEquals(0,engine().sync(owner.value).remaining)
+        assertEquals("Second",writes.recruiterCalls.last().second.get("recruiterName").asString)
+    }
+    @Test fun switchingAccountsDuringRecruiterRequestRetainsOnlyTheOriginalOwnersQueue() = runBlocking {
+        val original = seed()
+        repository().saveChanges(original,original.copy(recruiterContactJSON=RecruiterContact(true,"Private","","").json()))
+        writes.afterRecruiter={ owner.value="account-b" }
+        try { engine().sync("account-a"); fail("Stale result accepted") } catch (_: CancellationException) { }
+        assertNotNull(db.interviewDao().getInterviewById(1,"account-a")!!.pendingRecruiterJSON)
+        assertEquals(0,engine().sync("account-b").remaining)
+        assertEquals(1,writes.recruiterCalls.size)
+    }
+
+    @Test fun recruiterEditsRecoverMissingApplicationIdentityFromOwnedInterview() = runBlocking {
+        val original = seed(row().copy(applicationId=null))
+        repository().saveChanges(original,original.copy(recruiterContactJSON=RecruiterContact(true,"Sam").json()))
+        assertEquals(0,engine().sync(owner.value).failed)
+        assertEquals(77,db.interviewDao().getInterviewById(1,owner.value)!!.applicationId)
+        assertNull(db.interviewDao().getInterviewById(1,owner.value)!!.pendingRecruiterJSON)
+        assertEquals(77,writes.recruiterCalls.single().first)
+    }
     private inner class Writes : SyncWrites {
+        override suspend fun applicationIdForInterview(id: Int): Int? = byId[id]?.applicationId
+        val recruiterCalls=mutableListOf<Pair<Int,JsonObject>>()
+        var failRecruiter=false
+        var afterRecruiter: (suspend () -> Unit)?=null
+        override suspend fun updateRecruiter(id: Int, body: JsonObject) {
+            recruiterCalls += id to body.deepCopy()
+            if (failRecruiter) throw IOException("Offline recruiter")
+            afterRecruiter?.invoke()
+        }
         val byId = mutableMapOf<Int, APIInterview>()
         val receipts = mutableMapOf<String, Int>()
         val creates = mutableListOf<CreateInterviewRequest>()

@@ -362,6 +362,7 @@ class InterviewDetailActivity : AppCompatActivity() {
             putExtra(AddInterviewActivity.EXTRA_APPLICATION_DATE, interview.applicationDate.toString())
             putExtra(AddInterviewActivity.EXTRA_NOTES, interview.notes)
             putExtra(AddInterviewActivity.EXTRA_METADATA_JSON, interview.metadataJSON)
+            putExtra(AddInterviewActivity.EXTRA_RECRUITER_JSON, interview.recruiterContactJSON)
         }
         nextStageLauncher.launch(intent)
     }

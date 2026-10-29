@@ -58,6 +58,8 @@ data class Interview(
     @ColumnInfo(defaultValue = "0") val stageRecognized: Boolean = false,
     @ColumnInfo(defaultValue = "0") val stageSelectionChanged: Boolean = false,
     @ColumnInfo(defaultValue = "0") val methodSelectionChanged: Boolean = false,
+    val recruiterContactJSON: String? = null,
+    val pendingRecruiterJSON: String? = null,
     val clientMutationId: String? = null,
     val pendingChanges: String? = null,
     val syncIssue: String? = null,

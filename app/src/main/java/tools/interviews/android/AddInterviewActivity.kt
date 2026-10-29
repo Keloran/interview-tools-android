@@ -52,6 +52,7 @@ class AddInterviewActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "AddInterviewActivity"
+        const val EXTRA_RECRUITER_JSON = "recruiter_json"
         const val EXTRA_PREFILL_APPLICATION = "prefill_application"
         const val EXTRA_SELECTED_DATE = "selected_date"
         const val EXTRA_INTERVIEW = "interview"
@@ -68,6 +69,7 @@ class AddInterviewActivity : AppCompatActivity() {
         const val EXTRA_PREVIOUS_INTERVIEW_ID = "previous_interview_id"
     }
 
+    private lateinit var recruiterForm: RecruiterForm
     private lateinit var toolbar: MaterialToolbar
     private lateinit var buttonSave: MaterialButton
     private lateinit var dropdownStage: AutoCompleteTextView
@@ -127,8 +129,10 @@ class AddInterviewActivity : AppCompatActivity() {
         FoldableOrientationManager(this).attach(this)
 
         setupViews()
+        recruiterForm = RecruiterForm(this)
         setupToolbar()
         loadIntentData()
+        recruiterForm.bind(intent.getStringExtra(EXTRA_RECRUITER_JSON))
         setupDropdowns()
         setupCompanyAutocomplete()
         setupDateTimePickers()
@@ -448,6 +452,7 @@ class AddInterviewActivity : AppCompatActivity() {
     }
 
     private fun saveInterview() {
+        val recruiterJson = try { recruiterForm.json() } catch (error: IllegalArgumentException) { recruiterForm.showError(error); return }
         val companyName = editCompanyName.text.toString().trim()
         val isTechnicalTest = selectedStage == InterviewStage.TECHNICAL_TEST
 
@@ -484,6 +489,7 @@ class AddInterviewActivity : AppCompatActivity() {
         val interview = Interview(
             id = 0,
             serverId = null, // Not synced yet
+            recruiterContactJSON = recruiterJson, pendingRecruiterJSON = if (recruiterForm.changed) recruiterJson else null,
             clientCompany = findViewById<TextInputEditText>(R.id.editClientCompany).text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = companyName,

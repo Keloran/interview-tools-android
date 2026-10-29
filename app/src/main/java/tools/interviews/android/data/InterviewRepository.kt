@@ -70,8 +70,20 @@ class InterviewRepository(
         patched.companyId?.let { require(companyDao.getCompanyById(it, patched.ownerId) != null) { "Company belongs to another account." } }
         val changes = InterviewChanges.diff(current, patched)
         checkOwner(before.ownerId)
-        interviewDao.update(patched.copy(pendingChanges = InterviewChanges.merge(current.pendingChanges, changes),
-            localRevision = current.localRevision + 1, syncIssue = null))
+        val recruiterChanged = current.recruiterContactJSON != patched.recruiterContactJSON
+        val recruiterPatch = if (recruiterChanged) patched.recruiterContactJSON ?: tools.interviews.android.data.api.RecruiterContact().json() else current.pendingRecruiterJSON
+        transaction {
+            // Application-level contacts share one latest queued write across stages.
+            if (recruiterChanged && current.applicationId != null) {
+                for (stage in interviewDao.forApplication(current.applicationId, current.ownerId)) {
+                    if (stage.id != current.id) interviewDao.update(stage.copy(recruiterContactJSON = patched.recruiterContactJSON,
+                        pendingRecruiterJSON = null, localRevision = stage.localRevision + 1,
+                        syncIssue = if (stage.pendingChanges == null) null else stage.syncIssue))
+                }
+            }
+            interviewDao.update(patched.copy(pendingChanges = InterviewChanges.merge(current.pendingChanges, changes),
+                pendingRecruiterJSON = recruiterPatch, localRevision = current.localRevision + 1, syncIssue = null))
+        }
     }
 
     suspend fun delete(interview: Interview) = gate.run {
