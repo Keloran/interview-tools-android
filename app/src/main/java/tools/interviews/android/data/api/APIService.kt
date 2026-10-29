@@ -3,6 +3,9 @@ package tools.interviews.android.data.api
 import kotlinx.coroutines.CancellationException
 import java.util.concurrent.atomic.AtomicLong
 import java.io.IOException
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType.Companion.toMediaType
+import com.google.gson.JsonObject
 import com.google.gson.Gson
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -12,6 +15,9 @@ import retrofit2.http.*
 import java.util.concurrent.TimeUnit
 
 interface InterviewsAPI {
+    @GET("mobile-capabilities")
+    suspend fun mobileCapabilities(): JsonObject
+
     // Companies
     @GET("companies")
     suspend fun fetchCompanies(): List<APICompany>
@@ -41,8 +47,11 @@ interface InterviewsAPI {
     @GET("interview/{id}")
     suspend fun fetchInterview(@Path("id") id: Int): retrofit2.Response<APIInterview>
 
-    @POST("interview")
+    @POST("native/interview")
     suspend fun createInterview(@Body request: CreateInterviewRequest): APIInterview
+
+    @PUT("native/interview/{id}")
+    suspend fun patchInterview(@Path("id") id: Int, @Body patch: okhttp3.RequestBody): APIInterview
 
     @PUT("interview/{id}")
     suspend fun updateInterview(
@@ -51,12 +60,14 @@ interface InterviewsAPI {
     ): APIInterview
 }
 
-class APIService private constructor() : SyncWrites {
+class APIService private constructor(private val baseUrl: String = BASE_URL, private val calls: okhttp3.Call.Factory? = null) : SyncWrites {
     companion object {
         private const val BASE_URL = "https://interviews.tools/api/"
 
         @Volatile
         private var instance: APIService? = null
+
+        internal fun forTesting(baseUrl: String, calls: okhttp3.Call.Factory) = APIService(baseUrl, calls)
 
         fun getInstance(): APIService {
             return instance ?: synchronized(this) {
@@ -108,8 +119,8 @@ class APIService private constructor() : SyncWrites {
                 .build()
 
             retrofit = Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .client(client)
+                .baseUrl(baseUrl)
+                .callFactory(calls ?: client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
 
@@ -235,6 +246,24 @@ class APIService private constructor() : SyncWrites {
         } catch (e: Exception) {
             throw APIError.NetworkError(e)
         }
+    }
+
+    override suspend fun verifyCreateSupport() {
+        try {
+            check(getApi().mobileCapabilities().get("interviewCreateIdempotency")?.asInt == 1) {
+                "Uploads are temporarily unavailable. Your changes are saved on this device."
+            }
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { throw APIError.ServerError("Uploads are temporarily unavailable. Your changes are saved on this device. Try again later.") }
+    }
+
+    override suspend fun patchInterview(id: Int, patch: JsonObject): APIInterview {
+        try {
+            // Serialize the JSON tree directly: omitted and explicit-null fields have different meanings.
+            return getApi().patchInterview(id, patch.toString().toRequestBody("application/json".toMediaType()))
+        } catch (e: retrofit2.HttpException) { throw handleHttpException(e) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (e: Exception) { throw APIError.NetworkError(e) }
     }
 
     // MARK: - Private Helpers

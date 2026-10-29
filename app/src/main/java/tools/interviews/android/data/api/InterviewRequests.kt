@@ -23,7 +23,7 @@ object InterviewRequests {
             interviewLink = interview.link, notes = interview.notes,
             offerDeadline = if (interview.stage == InterviewStage.OFFER) interview.offerRespondBy?.toString() else null,
             previousInterviewId = parent,
-            durationMinutes = interview.durationMinutes, stageMethodId = interview.serverMethodId
+            durationMinutes = interview.durationMinutes, stageMethodId = interview.serverMethodId, clientMutationId = interview.clientMutationId
         )
     }
 

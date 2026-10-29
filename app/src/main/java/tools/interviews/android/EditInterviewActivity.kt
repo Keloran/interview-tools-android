@@ -471,7 +471,9 @@ class EditInterviewActivity : AppCompatActivity() {
             } else {
                 repository.findOrCreateCompany(updatedInterview.companyName, original.ownerId).id
             }
-            repository.update(updatedInterview.copy(companyId = company))
+            repository.saveChanges(original, updatedInterview.copy(companyId = company))
+            (application as InterviewApplication).schedulePendingSync(original.ownerId)
+            // The durable queue remains available after this screen closes, even offline.
             finish()
         }
     }

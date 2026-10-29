@@ -7,6 +7,8 @@ import tools.interviews.android.data.account.AccountOperationGate
 import tools.interviews.android.data.account.AccountOwners
 import tools.interviews.android.model.Company
 import tools.interviews.android.model.Interview
+import tools.interviews.android.data.api.InterviewChanges
+import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class InterviewRepository(
@@ -26,6 +28,12 @@ class InterviewRepository(
         emit(emptyList())
         if (!blocked) emitAll(companyDao.getAllCompanyNames(selected).map { if (ownerNow() == selected) it else emptyList() })
     } }
+    val pendingCount = scope.flatMapLatest { (blocked, selected) ->
+        if (blocked || selected == AccountOwners.GUEST) flowOf(0) else interviewDao.pendingCount(selected).map { if (ownerNow() == selected) it else 0 }.onStart { emit(0) }
+    }
+    val failedCount = scope.flatMapLatest { (blocked, selected) ->
+        if (blocked || selected == AccountOwners.GUEST) flowOf(0) else interviewDao.failedCount(selected).map { if (ownerNow() == selected) it else 0 }.onStart { emit(0) }
+    }
     val localImportCount = interviewDao.localImportCount()
     val legacyCount = interviewDao.legacyCount()
     val legacyLocalCount = interviewDao.legacyLocalCount()
@@ -42,7 +50,8 @@ class InterviewRepository(
         interview.companyId?.let {
             require(companyDao.getCompanyById(it, interview.ownerId) != null) { "Company belongs to another account." }
         }
-        interviewDao.insert(interview)
+        interviewDao.insert(interview.copy(clientMutationId = UUID.randomUUID().toString(),
+            pendingChanges = InterviewChanges.merge(interview.pendingChanges, InterviewChanges.afterCreate(interview))))
     }
     suspend fun update(interview: Interview) = gate.run {
         checkOwner(interview.ownerId)
@@ -53,6 +62,18 @@ class InterviewRepository(
         checkOwner(interview.ownerId)
         interviewDao.update(interview)
     }
+    suspend fun saveChanges(before: Interview, edited: Interview) = gate.run {
+        checkOwner(before.ownerId)
+        require(before.id == edited.id && before.ownerId == edited.ownerId) { "Interview identity cannot change while editing." }
+        val current = interviewDao.getInterviewById(before.id, before.ownerId) ?: throw CancellationException("Interview is no longer in this account.")
+        val patched = InterviewChanges.apply(current, before, edited)
+        patched.companyId?.let { require(companyDao.getCompanyById(it, patched.ownerId) != null) { "Company belongs to another account." } }
+        val changes = InterviewChanges.diff(current, patched)
+        checkOwner(before.ownerId)
+        interviewDao.update(patched.copy(pendingChanges = InterviewChanges.merge(current.pendingChanges, changes),
+            localRevision = current.localRevision + 1, syncIssue = null))
+    }
+
     suspend fun delete(interview: Interview) = gate.run {
         checkOwner(interview.ownerId)
         if (interviewDao.getInterviewById(interview.id, interview.ownerId) == null) throw CancellationException("Interview is no longer in this account.")
@@ -69,6 +90,14 @@ class InterviewRepository(
         checkOwner(selected)
         return record
     }
+    fun observeById(id: Long): Flow<Interview?> {
+        val expected = ownerNow()
+        return scope.flatMapLatest { (blocked, selected) ->
+            if (blocked || selected != expected) flowOf(null)
+            else interviewDao.observeById(id, expected).map { if (ownerNow() == expected) it else null }
+        }
+    }
+
     suspend fun findOrCreateCompany(name: String, expectedOwner: String = ownerNow()): Company = gate.run {
         checkOwner(expectedOwner)
         findCompany(name, expectedOwner)

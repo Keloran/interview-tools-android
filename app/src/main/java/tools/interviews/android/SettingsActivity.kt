@@ -51,6 +51,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var textAccountSubtitle: TextView
     private lateinit var sectionSync: LinearLayout
     private lateinit var itemSyncNow: LinearLayout
+    private var pendingDisplayOwner = AccountOwners.GUEST
     private lateinit var textLastSynced: TextView
     private lateinit var itemWebsite: LinearLayout
     private lateinit var itemGithub: LinearLayout
@@ -228,6 +229,11 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun updateAuthUI() {
         val currentUser = Clerk.user
+        val selected = AccountOwners.forUser(currentUser?.id)
+        if (selected != pendingDisplayOwner) {
+            findViewById<TextView>(R.id.textPendingSync).apply { text = ""; isVisible = false }
+            pendingDisplayOwner = selected
+        }
         val pending = accountData.pendingCleanup
         findViewById<MaterialButton>(R.id.importLocalData).apply {
             isVisible = currentUser != null && localImportCount > 0
@@ -312,6 +318,14 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun observeLocalData() {
         val repository = (application as InterviewApplication).repository
+        lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(repository.pendingCount, repository.failedCount, (application as InterviewApplication).owner) { pending, failed, owner -> Triple(pending, failed, owner) }
+                .collect { (pending, failed, owner) ->
+                    val text = findViewById<TextView>(R.id.textPendingSync)
+                    text.isVisible = pending > 0 && owner == (application as InterviewApplication).ownerNow()
+                    text.text = "$pending waiting to sync" + if (failed > 0) " · $failed need retry" else ""
+                }
+        }
         lifecycleScope.launch { repository.localImportCount.collect { localImportCount = it; updateAuthUI() } }
         lifecycleScope.launch { repository.legacyLocalCount.collect { legacyLocalCount = it; updateAuthUI() } }
         lifecycleScope.launch { repository.legacyCount.collect { findViewById<TextView>(R.id.legacyCacheNotice).isVisible = it > 0 } }

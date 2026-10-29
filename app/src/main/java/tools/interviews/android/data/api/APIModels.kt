@@ -61,7 +61,8 @@ data class CreateInterviewRequest(
     val offerDeadline: String? = null,
     val previousInterviewId: Int? = null,
     val durationMinutes: Int? = null,
-    val stageMethodId: Int? = null
+    val stageMethodId: Int? = null,
+    val clientMutationId: String? = null
 )
 
 data class UpdateInterviewRequest(

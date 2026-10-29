@@ -44,10 +44,13 @@ class SyncService(
     val syncError: StateFlow<Exception?> = _syncError.asStateFlow()
 
     private val gson = Gson()
+    private val _pendingResult = MutableStateFlow(PendingSyncResult(0, 0, 0))
+    val pendingResult = _pendingResult.asStateFlow()
 
     fun resetSessionState() {
         _lastSyncDate.value = null
         _syncError.value = null
+        _pendingResult.value = PendingSyncResult(0, 0, 0)
     }
 
     // MARK: - Sync All Data (Push then Pull)
@@ -65,7 +68,9 @@ class SyncService(
             val account = currentAccount() ?: error("Please sign in before syncing.")
             authenticate(account)
             if (currentAccount() != account) throw CancellationException("Account changed before syncing.")
-            pushLocalInterviews(account) { if (currentAccount() != account) throw CancellationException("Account changed during sync.") }
+            val result = PendingSyncEngine(interviewDao, writes, currentAccount, authenticate).sync(account)
+            _pendingResult.value = result
+            if (result.failed > 0 || result.remaining > 0) throw java.io.IOException(if (result.failed > 0) "Some interviews need retry. Your changes are saved on this device." else "More changes are waiting to sync. Your edits are saved.")
             val remote = remoteFactory()
             fun checkAccount() {
                 remote.checkSession()
@@ -149,44 +154,6 @@ class SyncService(
         }
     }
 
-    // MARK: - Push Local Interviews
-
-    private suspend fun pushLocalInterviews(ownerId: String, checkAccount: () -> Unit) {
-        // Get all interviews that haven't been synced yet (serverId is null)
-        val unsyncedInterviews = interviewDao.getUnsyncedInterviews(ownerId)
-
-        if (unsyncedInterviews.isEmpty()) {
-            Log.d(TAG, "No local interviews to push")
-            return
-        }
-
-        Log.d(TAG, "Pushing ${unsyncedInterviews.size} local interview(s) to server")
-
-        val attempted = mutableMapOf<Long, Result<Int>>()
-        val failures = mutableListOf<Exception>()
-        for (interview in unsyncedInterviews) {
-            try {
-                // Push to server
-                checkAccount()
-                val serverId = pushInterviewUnsafe(interview, attempted = attempted)
-                checkAccount()
-
-                // Update local interview with server ID
-                // pushInterviewUnsafe already saved the full acknowledged identity.
-                checkAccount()
-
-                Log.d(TAG, "Pushed interview '${interview.jobTitle}' -> server ID: $serverId")
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to push interview '${interview.jobTitle}': ${e.message}")
-                failures += e
-                // Continue independent drafts, but never retry a failed parent in this batch.
-            }
-        }
-        if (failures.isNotEmpty()) throw java.io.IOException("${failures.size} interview upload(s) need retry. Local drafts were kept.", failures.first())
-    }
-
     // MARK: - Pull Remote Interviews
 
     private suspend fun pullRemoteInterviews(snapshot: InterviewSyncSnapshot, ownerId: String, knownStageIds: Set<Int>) {
@@ -198,6 +165,9 @@ class SyncService(
         for (apiInterview in apiInterviews) {
             // Check if we already have this interview locally (by serverId)
             val existing = interviewDao.getInterviewByServerId(apiInterview.id, ownerId) ?: interviewDao.getLegacyByServerId(apiInterview.id)
+
+            // Never replace an unacknowledged local edit with a downloaded snapshot.
+            if (existing?.pendingChanges != null) continue
 
             // Find or create the company for this interview
             val company = findOrCreateCompany(apiInterview.company, ownerId)
@@ -211,7 +181,8 @@ class SyncService(
                     ownerId = ownerId,
                     knownStageIds = knownStageIds
                 )
-                interviewDao.update(updatedInterview)
+                interviewDao.update(updatedInterview.copy(clientMutationId = existing.clientMutationId,
+                    localRevision = existing.localRevision, previousLocalId = existing.previousLocalId))
                 Log.d(TAG, "Updated local interview: ${updatedInterview.jobTitle}")
             } else {
                 // Insert new interview from server
@@ -231,7 +202,10 @@ class SyncService(
         // Delete local interviews that no longer exist on server
         // (Only delete those that have a serverId - local-only interviews are preserved)
         for (deletedServerId in snapshot.deletedIds) {
-            interviewDao.deleteByServerId(deletedServerId, ownerId)
+            val local = interviewDao.getInterviewByServerId(deletedServerId, ownerId)
+            if (local?.pendingChanges != null) {
+                interviewDao.update(local.copy(syncIssue = "This interview was removed remotely. Your local changes are still saved."))
+            } else interviewDao.deleteByServerId(deletedServerId, ownerId)
             Log.d(TAG, "Deleted interview with serverId: $deletedServerId (removed from server)")
         }
     }
@@ -266,49 +240,24 @@ class SyncService(
 
     suspend fun pushInterview(interview: Interview): Int = gate.run {
         authenticate(interview.ownerId)
-        pushInterviewUnsafe(interview)
+        val result = PendingSyncEngine(interviewDao, writes, currentAccount, authenticate).sync(interview.ownerId, interview.id)
+        _pendingResult.value = result
+        check(result.failed == 0) { interviewDao.getInterviewById(interview.id, interview.ownerId)?.syncIssue ?: "Upload needs retry." }
+        requireNotNull(interviewDao.getInterviewById(interview.id, interview.ownerId)?.serverId)
     }
 
-    private suspend fun pushInterviewUnsafe(interview: Interview, ancestors: Set<Long> = emptySet(), attempted: MutableMap<Long, Result<Int>> = mutableMapOf()): Int {
-        attempted[interview.id]?.let { return it.getOrThrow() }
-        return try {
-            uploadWithParent(interview, ancestors, attempted).also { attempted[interview.id] = Result.success(it) }
-        } catch (e: Exception) {
-            attempted[interview.id] = Result.failure(e)
-            throw e
-        }
-    }
-
-    private suspend fun uploadWithParent(interview: Interview, ancestors: Set<Long>, attempted: MutableMap<Long, Result<Int>>): Int {
-        if (interview.ownerId != currentAccount()) throw CancellationException("Interview belongs to another account.")
-        require(interview.id !in ancestors) { "Previous-stage chain contains a cycle." }
-        val current = interviewDao.getInterviewById(interview.id, interview.ownerId) ?: error("Interview no longer exists.")
-        // A parent can already have been uploaded by an earlier recursive dependency.
-        current.serverId?.let { return it }
-        val parent = current.previousLocalId?.let { localId ->
-            interviewDao.getInterviewById(localId, current.ownerId) ?: error("Previous stage is missing from this account.")
-        }
-        val previousServerId = parent?.let {
-            it.serverId ?: pushInterviewUnsafe(it, ancestors + current.id, attempted)
-        } ?: current.parentId
-        if (current.ownerId != currentAccount()) throw CancellationException("Account changed before stage upload.")
-        val request = InterviewRequests.create(current.copy(jobListing = current.jobListing ?: extractJobListing(current.metadataJSON)), previousServerId)
-        val created = writes.createInterview(request)
-        if (current.ownerId != currentAccount()) throw CancellationException("Account changed during stage upload.")
-        // Persist the acknowledged identity before any subsequent operation can fail.
-        interviewDao.update(current.copy(serverId = created.id, applicationId = created.applicationId,
-            parentId = created.parentId, serverStageId = created.stage?.id,
-            serverMethodId = created.stageMethod?.id, serverMethodName = created.stageMethod?.method,
-            stageSelectionChanged = false, methodSelectionChanged = false))
-        return created.id
-    }
-
-    suspend fun updateRemoteInterview(id: Int, interview: Interview): APIInterview = gate.run {
-        authenticate(interview.ownerId)
-        if (interview.ownerId != currentAccount()) throw CancellationException("Interview belongs to another account.")
-        val request = InterviewRequests.update(interview)
-
-        writes.updateInterview(id, request)
+    suspend fun pushPending() = gate.run {
+        _isSyncing.value = true
+        _syncError.value = null
+        try {
+            val account = currentAccount() ?: error("Please sign in before syncing.")
+            authenticate(account)
+            val result = PendingSyncEngine(interviewDao, writes, currentAccount, authenticate).sync(account)
+            _pendingResult.value = result
+            if (result.failed > 0 || result.remaining > 0) throw java.io.IOException(if (result.failed > 0) "Some interviews need retry. Your local changes were kept." else "More changes are waiting to sync. Your edits are saved.")
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (e: Exception) { _syncError.value = e; throw e }
+        finally { _isSyncing.value = false }
     }
 
     // MARK: - Mapping Helpers
