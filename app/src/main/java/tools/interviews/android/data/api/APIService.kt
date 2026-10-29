@@ -51,7 +51,7 @@ interface InterviewsAPI {
     ): APIInterview
 }
 
-class APIService private constructor() {
+class APIService private constructor() : SyncWrites {
     companion object {
         private const val BASE_URL = "https://interviews.tools/api/"
 
@@ -127,6 +127,7 @@ class APIService private constructor() {
             override fun checkSession() {
                 if (authRevision.get() != revision) throw CancellationException("Session changed during sync. Existing history was kept.")
             }
+            override suspend fun stages() = client.fetchStages()
             override suspend fun companies() = client.fetchCompanies()
             override suspend fun interviews(take: Int, skip: Int) = client.fetchInterviews(includePast = true, take = take, skip = skip)
             override suspend fun interview(id: Int): APIInterview? {
@@ -212,7 +213,7 @@ class APIService private constructor() {
         }
     }
 
-    suspend fun createInterview(request: CreateInterviewRequest): APIInterview {
+    override suspend fun createInterview(request: CreateInterviewRequest): APIInterview {
         return try {
             getApi().createInterview(request)
         } catch (e: retrofit2.HttpException) {
@@ -224,7 +225,7 @@ class APIService private constructor() {
         }
     }
 
-    suspend fun updateInterview(id: Int, request: UpdateInterviewRequest): APIInterview {
+    override suspend fun updateInterview(id: Int, request: UpdateInterviewRequest): APIInterview {
         return try {
             getApi().updateInterview(id, request)
         } catch (e: retrofit2.HttpException) {

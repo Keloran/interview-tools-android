@@ -23,6 +23,7 @@ class SyncService(
     private val interviewDao: InterviewDao,
     private val companyDao: CompanyDao,
     private val apiService: APIService = APIService.getInstance(),
+    private val writes: SyncWrites = apiService,
     private val gate: AccountOperationGate = AccountOperationGate(),
     private val currentAccount: () -> String? = { null },
     private val authenticate: suspend (String) -> Unit = {},
@@ -71,6 +72,8 @@ class SyncService(
                 if (currentAccount() != account) throw CancellationException("Account changed during sync.")
             }
             checkAccount()
+            val catalogStages = remote.stages()
+            checkAccount()
             val snapshot = InterviewSyncSnapshotLoader(remote).load(interviewDao.getAllServerIds(account).toSet())
             checkAccount()
             // No local reconciliation occurs until all pages and missing-ID lookups have succeeded.
@@ -78,7 +81,7 @@ class SyncService(
                 currentCoroutineContext().ensureActive()
                 checkAccount()
                 syncCompanies(snapshot.companies, account)
-                pullRemoteInterviews(snapshot, account)
+                pullRemoteInterviews(snapshot, account, catalogStages.map { it.id }.toSet())
                 currentCoroutineContext().ensureActive()
                 checkAccount()
             }
@@ -159,30 +162,34 @@ class SyncService(
 
         Log.d(TAG, "Pushing ${unsyncedInterviews.size} local interview(s) to server")
 
+        val attempted = mutableMapOf<Long, Result<Int>>()
+        val failures = mutableListOf<Exception>()
         for (interview in unsyncedInterviews) {
             try {
                 // Push to server
                 checkAccount()
-                val apiInterview = pushInterviewUnsafe(interview)
+                val serverId = pushInterviewUnsafe(interview, attempted = attempted)
                 checkAccount()
 
                 // Update local interview with server ID
-                val updatedInterview = interview.copy(serverId = apiInterview.id)
-                interviewDao.update(updatedInterview)
+                // pushInterviewUnsafe already saved the full acknowledged identity.
+                checkAccount()
 
-                Log.d(TAG, "Pushed interview '${interview.jobTitle}' -> server ID: ${apiInterview.id}")
+                Log.d(TAG, "Pushed interview '${interview.jobTitle}' -> server ID: $serverId")
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to push interview '${interview.jobTitle}': ${e.message}")
-                // Continue with other interviews even if one fails
+                failures += e
+                // Continue independent drafts, but never retry a failed parent in this batch.
             }
         }
+        if (failures.isNotEmpty()) throw java.io.IOException("${failures.size} interview upload(s) need retry. Local drafts were kept.", failures.first())
     }
 
     // MARK: - Pull Remote Interviews
 
-    private suspend fun pullRemoteInterviews(snapshot: InterviewSyncSnapshot, ownerId: String) {
+    private suspend fun pullRemoteInterviews(snapshot: InterviewSyncSnapshot, ownerId: String, knownStageIds: Set<Int>) {
         val apiInterviews = snapshot.interviews
         Log.d(TAG, "Received ${apiInterviews.size} interview(s) from server")
 
@@ -201,7 +208,8 @@ class SyncService(
                     apiInterview,
                     existingLocalId = existing.id,
                     companyId = company.id,
-                    ownerId = ownerId
+                    ownerId = ownerId,
+                    knownStageIds = knownStageIds
                 )
                 interviewDao.update(updatedInterview)
                 Log.d(TAG, "Updated local interview: ${updatedInterview.jobTitle}")
@@ -210,7 +218,8 @@ class SyncService(
                 val newInterview = mapApiInterviewToLocal(
                     apiInterview,
                     companyId = company.id,
-                    ownerId = ownerId
+                    ownerId = ownerId,
+                    knownStageIds = knownStageIds
                 )
                 interviewDao.insert(newInterview)
                 Log.d(TAG, "Inserted new interview from server: ${newInterview.jobTitle}")
@@ -255,37 +264,43 @@ class SyncService(
 
     // MARK: - Push Single Interview to API
 
-    suspend fun pushInterview(interview: Interview): APIInterview = gate.run {
+    suspend fun pushInterview(interview: Interview): Int = gate.run {
         authenticate(interview.ownerId)
         pushInterviewUnsafe(interview)
     }
 
-    private suspend fun pushInterviewUnsafe(interview: Interview): APIInterview {
-        if (interview.ownerId != currentAccount()) throw CancellationException("Interview belongs to another account.")
-        require(interview.stage != InterviewStage.UNKNOWN && interview.outcome != InterviewOutcome.UNKNOWN) {
-            "Choose a known stage and outcome before uploading a new record."
+    private suspend fun pushInterviewUnsafe(interview: Interview, ancestors: Set<Long> = emptySet(), attempted: MutableMap<Long, Result<Int>> = mutableMapOf()): Int {
+        attempted[interview.id]?.let { return it.getOrThrow() }
+        return try {
+            uploadWithParent(interview, ancestors, attempted).also { attempted[interview.id] = Result.success(it) }
+        } catch (e: Exception) {
+            attempted[interview.id] = Result.failure(e)
+            throw e
         }
-        val request = CreateInterviewRequest(
-            stage = interview.stage.displayName,
-            companyName = interview.companyName,
-            clientCompany = interview.clientCompany,
-            jobTitle = interview.jobTitle,
-            jobPostingLink = interview.jobListing ?: extractJobListing(interview.metadataJSON),
-            date = interview.meetingWireValue(),
-            deadline = interview.deadlineWireValue(),
-            interviewer = interview.interviewer,
-            locationType = when (interview.method) {
-                InterviewMethod.VIDEO_CALL -> "link"
-                InterviewMethod.PHONE_CALL -> "phone"
-                InterviewMethod.IN_PERSON -> "in_person"
-                null -> null
-            },
-            interviewLink = interview.link,
-            notes = interview.notes,
-            offerDeadline = if (interview.stage == InterviewStage.OFFER) interview.offerRespondBy?.toString() else null
-        )
+    }
 
-        return apiService.createInterview(request)
+    private suspend fun uploadWithParent(interview: Interview, ancestors: Set<Long>, attempted: MutableMap<Long, Result<Int>>): Int {
+        if (interview.ownerId != currentAccount()) throw CancellationException("Interview belongs to another account.")
+        require(interview.id !in ancestors) { "Previous-stage chain contains a cycle." }
+        val current = interviewDao.getInterviewById(interview.id, interview.ownerId) ?: error("Interview no longer exists.")
+        // A parent can already have been uploaded by an earlier recursive dependency.
+        current.serverId?.let { return it }
+        val parent = current.previousLocalId?.let { localId ->
+            interviewDao.getInterviewById(localId, current.ownerId) ?: error("Previous stage is missing from this account.")
+        }
+        val previousServerId = parent?.let {
+            it.serverId ?: pushInterviewUnsafe(it, ancestors + current.id, attempted)
+        } ?: current.parentId
+        if (current.ownerId != currentAccount()) throw CancellationException("Account changed before stage upload.")
+        val request = InterviewRequests.create(current.copy(jobListing = current.jobListing ?: extractJobListing(current.metadataJSON)), previousServerId)
+        val created = writes.createInterview(request)
+        if (current.ownerId != currentAccount()) throw CancellationException("Account changed during stage upload.")
+        // Persist the acknowledged identity before any subsequent operation can fail.
+        interviewDao.update(current.copy(serverId = created.id, applicationId = created.applicationId,
+            parentId = created.parentId, serverStageId = created.stage?.id,
+            serverMethodId = created.stageMethod?.id, serverMethodName = created.stageMethod?.method,
+            stageSelectionChanged = false, methodSelectionChanged = false))
+        return created.id
     }
 
     suspend fun updateRemoteInterview(id: Int, interview: Interview): APIInterview = gate.run {
@@ -293,7 +308,7 @@ class SyncService(
         if (interview.ownerId != currentAccount()) throw CancellationException("Interview belongs to another account.")
         val request = InterviewRequests.update(interview)
 
-        apiService.updateInterview(id, request)
+        writes.updateInterview(id, request)
     }
 
     // MARK: - Mapping Helpers
@@ -302,7 +317,8 @@ class SyncService(
         apiInterview: APIInterview,
         existingLocalId: Long? = null,
         companyId: Long? = null,
-        ownerId: String = AccountOwners.GUEST
+        ownerId: String = AccountOwners.GUEST,
+        knownStageIds: Set<Int> = emptySet()
     ): Interview {
         // Parse application date
         val applicationDate = requireNotNull(InterviewTimes.parseDay(apiInterview.applicationDate)) { "Missing application date" }
@@ -333,6 +349,13 @@ class SyncService(
         return Interview(
             id = existingLocalId ?: 0, // Use existing local ID or let Room auto-generate
             ownerId = ownerId,
+            applicationId = apiInterview.applicationId,
+            parentId = apiInterview.parentId,
+            durationMinutes = apiInterview.durationMinutes,
+            serverStageId = apiInterview.stage?.id,
+            serverMethodId = apiInterview.stageMethod?.id,
+            serverMethodName = apiInterview.stageMethod?.method,
+            stageRecognized = apiInterview.stage?.id in knownStageIds,
             serverStageName = apiInterview.stage?.stage,
             serverOutcomeName = apiInterview.outcome,
             serverId = apiInterview.id, // Always set the server ID
@@ -376,16 +399,7 @@ class SyncService(
     }
 
     // Made internal for testing
-    internal fun mapApiMethodToLocal(methodName: String?): InterviewMethod? {
-        if (methodName == null) return null
-
-        return when (methodName.lowercase()) {
-            "video call", "video" -> InterviewMethod.VIDEO_CALL
-            "phone call", "phone" -> InterviewMethod.PHONE_CALL
-            "in person", "in_person", "onsite" -> InterviewMethod.IN_PERSON
-            else -> null
-        }
-    }
+    internal fun mapApiMethodToLocal(methodName: String?): InterviewMethod? = InterviewCatalog.methodKind(methodName)
 
     // Made internal for testing
     internal fun mapApiOutcomeToLocal(outcomeName: String?): InterviewOutcome {

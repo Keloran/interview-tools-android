@@ -1,5 +1,10 @@
 package tools.interviews.android
 
+import tools.interviews.android.data.api.InterviewCatalog
+import tools.interviews.android.data.api.APIStage
+import tools.interviews.android.data.api.APIStageMethod
+import tools.interviews.android.data.api.APIService
+import tools.interviews.android.model.methodLabel
 import tools.interviews.android.model.*
 import tools.interviews.android.util.confirmMeetingTime
 import tools.interviews.android.model.InterviewTimes
@@ -58,6 +63,7 @@ class EditInterviewActivity : AppCompatActivity() {
     private lateinit var sectionDeadline: LinearLayout
     private lateinit var editDeadline: TextInputEditText
     private lateinit var editTestLink: TextInputEditText
+    private lateinit var editDuration: TextInputEditText
     private lateinit var editNotes: TextInputEditText
 
     private lateinit var repository: InterviewRepository
@@ -65,6 +71,14 @@ class EditInterviewActivity : AppCompatActivity() {
     private var originalInterview: Interview? = null
 
     private var selectedStage: InterviewStage = InterviewStage.APPLIED
+    private var catalog = InterviewCatalog.fallback()
+    private var selectedStageId: Int? = null
+    private var selectedStageName: String? = null
+    private var selectedStageRecognized = false
+    private var stageChanged = false
+    private var selectedMethodId: Int? = null
+    private var selectedMethodName: String? = null
+    private var methodChanged = false
     private var selectedMethod: InterviewMethod? = null
     private var selectedOutcome: InterviewOutcome = InterviewOutcome.SCHEDULED
     private var selectedDateTime: LocalDateTime? = null
@@ -119,6 +133,7 @@ class EditInterviewActivity : AppCompatActivity() {
         editDeadline = findViewById(R.id.editDeadline)
         editTestLink = findViewById(R.id.editTestLink)
         editNotes = findViewById(R.id.editNotes)
+        editDuration = findViewById(R.id.editDuration)
 
         toolbar.title = "Edit Interview"
     }
@@ -147,6 +162,11 @@ class EditInterviewActivity : AppCompatActivity() {
                 setupDateTimePickers()
                 setupValidation()
                 updateInterviewDetailsVisibility(clearHiddenFields = false)
+                if ((application as InterviewApplication).ownerNow() != AccountOwners.GUEST) {
+                    dropdownStage.isEnabled = false
+                    dropdownMethod.isEnabled = false
+                    loadServerCatalog()
+                }
             } ?: finish()
         }
     }
@@ -154,6 +174,12 @@ class EditInterviewActivity : AppCompatActivity() {
     private fun populateForm(interview: Interview) {
         selectedStage = interview.stage
         selectedMethod = interview.method
+        selectedStageId = interview.serverStageId
+        selectedStageName = interview.serverStageName
+        selectedStageRecognized = interview.stageRecognized
+        selectedMethodId = interview.serverMethodId
+        selectedMethodName = interview.serverMethodName
+        editDuration.setText(interview.durationMinutes?.toString() ?: "")
         selectedOutcome = interview.outcome
         applicationDate = interview.applicationDate
 
@@ -188,36 +214,61 @@ class EditInterviewActivity : AppCompatActivity() {
     }
 
     private fun setupDropdowns() {
-        // Stage dropdown
-        val stages = InterviewStage.entries.filter { it != InterviewStage.UNKNOWN }.map { it.displayName }
-        val stageAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, stages)
-        dropdownStage.setAdapter(stageAdapter)
-        dropdownStage.setText(originalInterview?.stageLabel ?: selectedStage.displayName, false)
+        val stages = catalog.stages
+        dropdownStage.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, stages.map { it.stage }))
+        dropdownStage.setText(selectedStageName ?: originalInterview?.stageLabel ?: selectedStage.displayName, false)
         dropdownStage.setOnItemClickListener { _, _, position, _ ->
-            selectedStage = InterviewStage.entries[position]
+            val option = stages[position]
+            selectedStage = InterviewCatalog.stageKind(option.stage)
+            selectedStageId = option.id.takeIf { it > 0 }
+            selectedStageName = option.stage
+            selectedStageRecognized = option.id > 0
+            stageChanged = true
             updateInterviewDetailsVisibility()
             validateForm()
         }
-
-        // Method dropdown
-        val methods = InterviewMethod.entries.map { it.displayName }
-        val methodAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, methods)
-        dropdownMethod.setAdapter(methodAdapter)
-        selectedMethod?.let {
-            dropdownMethod.setText(it.displayName, false)
-        }
+        dropdownMethod.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, catalog.methods.map { it.method }))
+        dropdownMethod.setText(selectedMethodName ?: selectedMethod?.displayName ?: "", false)
         dropdownMethod.setOnItemClickListener { _, _, position, _ ->
-            selectedMethod = InterviewMethod.entries[position]
+            val option = catalog.methods[position]
+            selectedMethod = InterviewCatalog.methodKind(option.method)
+            selectedMethodId = option.id.takeIf { it > 0 }
+            selectedMethodName = option.method
+            methodChanged = true
             updateMeetingLinkVisibility()
             validateForm()
         }
-        // Set initial visibility based on loaded method
         updateMeetingLinkVisibility(clearHiddenFields = false)
+    }
+
+    private fun loadServerCatalog() {
+        val app = application as InterviewApplication
+        val expected = app.ownerNow()
+        if (expected == AccountOwners.GUEST) return
+        lifecycleScope.launch {
+            try {
+                val loaded = app.accountGate.run {
+                    app.authenticateAccount(expected)
+                    InterviewCatalog(APIService.getInstance().fetchStages(), APIService.getInstance().fetchStageMethods())
+                }
+                val stages = loaded.stages
+                val methods = loaded.methods
+                if (app.ownerNow() != expected) return@launch
+                if (stages.isNotEmpty()) catalog = InterviewCatalog(stages, methods.ifEmpty { catalog.methods })
+                setupDropdowns()
+                dropdownStage.isEnabled = true
+                dropdownMethod.isEnabled = true
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                com.google.android.material.snackbar.Snackbar.make(buttonSave, "Connect to load current stage and meeting options.", com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun updateMeetingLinkVisibility(clearHiddenFields: Boolean = true) {
         // Only show meeting link for Video Call
-        val showMeetingLink = selectedMethod == InterviewMethod.VIDEO_CALL
+        val showMeetingLink = selectedMethod == InterviewMethod.VIDEO_CALL || (selectedMethod == null && selectedMethodName != null)
         layoutMeetingLink.isVisible = showMeetingLink
         if (!showMeetingLink && clearHiddenFields) {
             editMeetingLink.text?.clear()
@@ -251,6 +302,8 @@ class EditInterviewActivity : AppCompatActivity() {
             selectedDateTime = null
             selectedInstant = null
             selectedMethod = null
+            selectedMethodId = null
+            selectedMethodName = null
             editInterviewDateTime.text?.clear()
             dropdownMethod.text?.clear()
             editInterviewer.text?.clear()
@@ -340,6 +393,7 @@ class EditInterviewActivity : AppCompatActivity() {
     private fun setupValidation() {
         editCompanyName.doAfterTextChanged { validateForm() }
         editJobTitle.doAfterTextChanged { validateForm() }
+        editDuration.doAfterTextChanged { validateForm() }
         validateForm() // Initial validation
     }
 
@@ -349,7 +403,7 @@ class EditInterviewActivity : AppCompatActivity() {
 
         val isValid = when {
             selectedStage == InterviewStage.APPLIED ||
-            selectedStage == InterviewStage.OFFER || selectedStage == InterviewStage.UNKNOWN -> {
+            selectedStage == InterviewStage.OFFER || (selectedStage == InterviewStage.UNKNOWN && !stageChanged) -> {
                 hasBasicInfo
             }
             selectedStage == InterviewStage.TECHNICAL_TEST -> {
@@ -358,11 +412,14 @@ class EditInterviewActivity : AppCompatActivity() {
             else -> {
                 hasBasicInfo &&
                     selectedDateTime != null &&
-                    selectedMethod != null
+                    (selectedMethod != null || selectedMethodName != null)
             }
         }
 
-        buttonSave.isEnabled = isValid
+        val duration = editDuration.text?.toString()?.trim().orEmpty()
+        val validDuration = duration.isEmpty() || duration.toIntOrNull() in 15..480
+        editDuration.error = if (validDuration) null else "Enter 15–480 minutes"
+        buttonSave.isEnabled = isValid && validDuration
     }
 
     private fun saveInterview() {
@@ -390,6 +447,11 @@ class EditInterviewActivity : AppCompatActivity() {
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = editCompanyName.text.toString().trim(),
             stage = selectedStage,
+            serverStageId = selectedStageId, serverStageName = selectedStageName,
+            stageRecognized = selectedStageRecognized, stageSelectionChanged = stageChanged || original.stageSelectionChanged,
+            serverMethodId = selectedMethodId, serverMethodName = selectedMethodName,
+            methodSelectionChanged = methodChanged || original.methodSelectionChanged,
+            durationMinutes = editDuration.text?.toString()?.trim()?.toIntOrNull(),
             method = selectedMethod,
             outcome = selectedOutcome,
             applicationDate = applicationDate,

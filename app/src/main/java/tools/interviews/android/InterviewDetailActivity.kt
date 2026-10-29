@@ -17,14 +17,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.clerk.api.Clerk
-import com.clerk.api.network.serialization.successOrNull
-import com.clerk.api.session.fetchToken
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 import tools.interviews.android.data.InterviewRepository
-import tools.interviews.android.data.api.APIService
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
@@ -204,8 +201,8 @@ class InterviewDetailActivity : AppCompatActivity() {
         badgeStage.text = interview.stageLabel
 
         // Method badge
-        if (interview.method != null) {
-            badgeMethod.text = interview.method.displayName
+        if (interview.methodLabel != null) {
+            badgeMethod.text = interview.methodLabel
             badgeMethod.isVisible = true
         } else {
             badgeMethod.isVisible = false
@@ -339,14 +336,10 @@ class InterviewDetailActivity : AppCompatActivity() {
             // If interview has been synced to server, update remotely too
             if (interview.serverId != null) {
                 try {
-                    val session = Clerk.sessionFlow.value
-                    val token = session?.fetchToken()?.successOrNull()
 
-                    if (token != null) {
-                        APIService.getInstance().setAuthToken(token.jwt)
-                        syncService.updateRemoteInterview(interview.serverId, updatedInterview)
-                        Log.d(TAG, "Updated interview outcome on server: ${newOutcome.name}")
-                    }
+                    syncService.updateRemoteInterview(interview.serverId, updatedInterview)
+                    Log.d(TAG, "Updated interview outcome on server: ${newOutcome.name}")
+
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to update outcome on server: ${e.message}", e)
                 }
