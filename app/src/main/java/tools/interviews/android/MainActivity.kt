@@ -266,6 +266,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
+        toolbar.menu.add("Questions and STAR stories").setOnMenuItemClickListener {
+            startActivity(Intent(this, InterviewBankActivity::class.java)); true
+        }
         toolbar.menu.add("Recruiters").setOnMenuItemClickListener {
             startActivity(Intent(this, RecruitersActivity::class.java)); true
         }

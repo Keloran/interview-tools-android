@@ -30,10 +30,10 @@ interface InterviewDao {
     @Query("SELECT * FROM interviews WHERE serverId IS NULL AND ownerId = :ownerId")
     suspend fun getUnsyncedInterviews(ownerId: String = AccountOwners.GUEST): List<Interview>
 
-    @Query("SELECT * FROM interviews WHERE ownerId = :ownerId AND (serverId IS NULL OR pendingChanges IS NOT NULL OR pendingRecruiterJSON IS NOT NULL) ORDER BY id")
+    @Query("SELECT * FROM interviews WHERE ownerId = :ownerId AND (serverId IS NULL OR pendingChanges IS NOT NULL OR pendingRecruiterJSON IS NOT NULL OR pendingPrepJSON IS NOT NULL) ORDER BY id")
     suspend fun pending(ownerId: String): List<Interview>
 
-    @Query("SELECT COUNT(*) FROM interviews WHERE ownerId = :ownerId AND (serverId IS NULL OR pendingChanges IS NOT NULL OR pendingRecruiterJSON IS NOT NULL)")
+    @Query("SELECT COUNT(*) FROM interviews WHERE ownerId = :ownerId AND (serverId IS NULL OR pendingChanges IS NOT NULL OR pendingRecruiterJSON IS NOT NULL OR pendingPrepJSON IS NOT NULL)")
     fun pendingCount(ownerId: String): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM interviews WHERE ownerId = :ownerId AND syncIssue IS NOT NULL")

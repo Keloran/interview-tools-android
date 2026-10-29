@@ -19,6 +19,7 @@ data class InterviewCatalog(val stages: List<APIStage>, val methods: List<APISta
 }
 
 interface SyncWrites {
+    suspend fun updatePrep(id: Int, body: com.google.gson.JsonObject) { error("Preparation updates are unavailable.") }
     suspend fun applicationIdForInterview(id: Int): Int? = null
     suspend fun updateRecruiter(id: Int, body: com.google.gson.JsonObject) { error("Recruiter updates are unavailable.") }
     suspend fun verifyCreateSupport() {}

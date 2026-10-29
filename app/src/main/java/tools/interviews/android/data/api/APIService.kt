@@ -23,6 +23,15 @@ interface InterviewsAPI {
     @PUT("applications/{id}/first-response")
     suspend fun saveFirstReply(@Path("id") id: Int, @Body body: okhttp3.RequestBody): JsonObject
 
+    @GET("interview/{id}/prep")
+    suspend fun prep(@Path("id") id: Int): JsonObject
+    @PUT("interview/{id}/prep")
+    suspend fun updatePrep(@Path("id") id: Int, @Body body: okhttp3.RequestBody): JsonObject
+    @GET("questions") suspend fun questions(): com.google.gson.JsonArray
+    @GET("stories") suspend fun stories(): com.google.gson.JsonArray
+    @POST("native/stories") suspend fun createStory(@Body body: okhttp3.RequestBody): JsonObject
+    @PUT("stories/{id}") suspend fun updateStory(@Path("id") id: Int, @Body body: okhttp3.RequestBody): JsonObject
+
     @GET("recruiters")
     suspend fun recruiters(): com.google.gson.JsonArray
     @PUT("applications/{id}/recruiter")
@@ -73,7 +82,7 @@ interface InterviewsAPI {
     ): APIInterview
 }
 
-class APIService private constructor(private val baseUrl: String = BASE_URL, private val calls: okhttp3.Call.Factory? = null) : SyncWrites, ApplicationTimelineRemote {
+class APIService private constructor(private val baseUrl: String = BASE_URL, private val calls: okhttp3.Call.Factory? = null) : SyncWrites, ApplicationTimelineRemote, ReflectionRemote, StoryWrites {
     companion object {
         private const val BASE_URL = "https://interviews.tools/api/"
 
@@ -165,10 +174,31 @@ class APIService private constructor(private val baseUrl: String = BASE_URL, pri
         }
     }
 
+    override suspend fun reflectionInterview(id: Int): APIInterview {
+        val response=getApi().fetchInterview(id)
+        if (!response.isSuccessful) throw handleHttpException(retrofit2.HttpException(response))
+        return response.body() ?: error("Interview response was empty.")
+    }
     override suspend fun applicationIdForInterview(id: Int): Int? {
         val response = getApi().fetchInterview(id)
         if (!response.isSuccessful) throw handleHttpException(retrofit2.HttpException(response))
         return response.body()?.applicationId
+    }
+    override suspend fun prep(id: Int) = getApi().prep(id)
+    override suspend fun updatePrep(id: Int, body: JsonObject) {
+        val response = getApi().updatePrep(id, body.toString().toRequestBody("application/json".toMediaType()))
+        check(response.has("notes") && response.has("storyIds")) { "Preparation was not confirmed. Your draft is still saved." }
+    }
+    suspend fun questions() = getApi().questions()
+    suspend fun stories() = getApi().stories()
+    override suspend fun createStory(body: JsonObject) = saveStory(null,body)
+    override suspend fun updateStory(id: Int, body: JsonObject) {
+        val response=saveStory(id,body)
+        check(response.get("ok")?.asBoolean==true) { "Story edit was not confirmed. Your draft is still saved." }
+    }
+    private suspend fun saveStory(id: Int?, body: JsonObject): JsonObject {
+        val request = body.toString().toRequestBody("application/json".toMediaType())
+        return if (id == null) getApi().createStory(request) else getApi().updateStory(id, request)
     }
     suspend fun recruiters() = getApi().recruiters()
     override suspend fun updateRecruiter(id: Int, body: JsonObject) {

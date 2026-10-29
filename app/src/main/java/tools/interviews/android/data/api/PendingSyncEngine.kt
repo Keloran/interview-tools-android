@@ -104,6 +104,15 @@ class PendingSyncEngine(
                     if (latest.localRevision == recruiterRow.localRevision) dao.update(latest.copy(pendingRecruiterJSON = null, syncIssue = null))
                     if (row.pendingChanges == null) updated++
                 }
+                val prepRow = dao.getInterviewById(id, owner) ?: error("Interview disappeared during update.")
+                prepRow.pendingPrepJSON?.let { pending ->
+                    authenticate(owner); checkAccount(owner)
+                    writes.updatePrep(serverId, JsonParser.parseString(pending).asJsonObject)
+                    checkAccount(owner)
+                    val latest = dao.getInterviewById(id, owner) ?: error("Interview disappeared during update.")
+                    if (latest.localRevision == prepRow.localRevision) dao.update(latest.copy(pendingPrepJSON=null, syncIssue=null))
+                    if (row.pendingChanges == null && recruiterRow.pendingRecruiterJSON == null) updated++
+                }
                 attempted[id] = Result.success(serverId)
                 return serverId
             } catch (cancelled: CancellationException) {
