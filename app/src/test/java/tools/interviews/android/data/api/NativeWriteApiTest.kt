@@ -107,6 +107,16 @@ class NativeWriteApiTest {
         val sent=JsonParser.parseString(Buffer().also { requests.single().body!!.writeTo(it) }.readUtf8()).asJsonObject
         assertEquals(body.get("clientMutationId"),sent.get("clientMutationId"))
     }
+    @Test fun `native follow ups retain their mutation identity and avoid legacy fallback`() = runTest {
+        val api=APIService.forTesting("https://example.test/api/",factory)
+        val body=JsonParser.parseString("{\"applicationId\":7,\"clientMutationId\":\"11111111-1111-4111-8111-111111111111\"}").asJsonObject
+        status=404
+        assertTrue(runCatching { api.recordFollowUp(body) }.isFailure)
+        assertEquals(listOf("/api/native/follow-ups"),requests.map { it.url.encodedPath })
+        val sent=JsonParser.parseString(Buffer().also { requests.single().body!!.writeTo(it) }.readUtf8()).asJsonObject
+        assertEquals(7,sent.get("applicationId").asInt)
+        assertEquals(body.get("clientMutationId"),sent.get("clientMutationId"))
+    }
     @Test fun `older servers never receive a fallback create at the unsafe legacy URL`() = runTest {
         status = 404
         val api = APIService.forTesting("https://example.test/api/", factory)

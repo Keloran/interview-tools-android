@@ -33,6 +33,7 @@
             </intent-filter>
         </activity>
 
+        <activity android:name="tools.interviews.android.FollowUpsActivity" android:exported="false" />
         <activity android:name="tools.interviews.android.StageReflectionActivity" android:exported="false" />
         <activity android:name="tools.interviews.android.InterviewBankActivity" android:exported="false" />
         <activity android:name="tools.interviews.android.StoryEditorActivity" android:exported="false" />

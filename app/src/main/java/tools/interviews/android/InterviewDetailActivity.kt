@@ -32,6 +32,8 @@ import tools.interviews.android.R
 
 class InterviewDetailActivity : AppCompatActivity() {
 
+    private var ghostedAction: android.view.MenuItem?=null
+    private var templatesAction: android.view.MenuItem?=null
     private lateinit var timelinePanel: ApplicationTimelinePanel
     private lateinit var toolbar: MaterialToolbar
     private lateinit var buttonEdit: ImageButton
@@ -151,6 +153,23 @@ class InterviewDetailActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
+        ghostedAction=toolbar.menu.add("Close as ghosted").apply {
+            isVisible=false
+            setOnMenuItemClickListener {
+                val selected=interview
+                if(selected!=null) com.google.android.material.dialog.MaterialAlertDialogBuilder(this@InterviewDetailActivity)
+                    .setTitle("Close this stage as ghosted?").setMessage("Record No response for this stage and remove it from upcoming interviews.")
+                    .setNegativeButton("Cancel",null).setPositiveButton("Close as ghosted") { _,_->closeAsGhosted(selected) }.show()
+                true
+            }
+        }
+        templatesAction=toolbar.menu.add("Message templates").setOnMenuItemClickListener {
+            interview?.let { selected ->
+                val context=tools.interviews.android.data.api.MessageContext(selected.jobTitle,selected.companyName,selected.clientCompany,selected.stageLabel,selected.interviewer,selected.interviewInstant.takeIf { selected.hasMeeting })
+                val templates=if(selected.outcome==InterviewOutcome.UNKNOWN) emptyList() else tools.interviews.android.data.api.MessageTemplates.available(selected.outcomeWireValue(),selected.stageLabel,context.date)
+                MessageComposer.choose(this,selected.ownerId,context,templates)
+            };true
+        }
         toolbar.menu.add("Debrief and preparation").setOnMenuItemClickListener {
             startActivity(Intent(this,StageReflectionActivity::class.java).putExtra(StageReflectionActivity.EXTRA_INTERVIEW_ID,interviewId).putExtra("expected_owner",interview?.ownerId));true
         }
@@ -195,6 +214,7 @@ class InterviewDetailActivity : AppCompatActivity() {
 
     private fun displayInterview(interview: Interview) {
         findViewById<android.view.View>(R.id.buttonEnableDebriefReminders).isVisible=interview.hasMeeting && interview.interviewInstant!=null && interview.debriefedAt==null
+        templatesAction?.isVisible=interview.outcome!=InterviewOutcome.UNKNOWN && tools.interviews.android.data.api.MessageTemplates.available(interview.outcomeWireValue(),interview.stageLabel,interview.interviewInstant.takeIf { interview.hasMeeting }).isNotEmpty()
         timelinePanel.bind(interview)
         // Basic info
         textJobTitle.text = interview.jobTitle
@@ -213,6 +233,7 @@ class InterviewDetailActivity : AppCompatActivity() {
         val isOutcomeFinal = interview.outcome.isClosed || interview.outcome == InterviewOutcome.UNKNOWN
 
         // Default to invisible
+        ghostedAction?.isVisible=false
         buttonReject.isVisible = false
         buttonForward.isVisible = false
         buttonAwaiting.isVisible = false
@@ -220,8 +241,10 @@ class InterviewDetailActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val client = (application as InterviewApplication).flagsClient.await()
 
+            if(this@InterviewDetailActivity.interview?.id!=interview.id || this@InterviewDetailActivity.interview?.outcome!=interview.outcome) return@launch
             if (!isOutcomeFinal) {
                 buttonReject.isVisible = client.isEnabled("reject button")
+                ghostedAction?.isVisible=client.isEnabled("reject button")
                 buttonForward.isVisible = client.isEnabled("approve button")
                 buttonAwaiting.isVisible = interview.outcome != InterviewOutcome.AWAITING_RESPONSE && client.isEnabled("awaiting button")
             }
@@ -356,6 +379,17 @@ class InterviewDetailActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
+    private fun closeAsGhosted(selected: Interview) {
+        lifecycleScope.launch {
+            val latest=repository.getById(selected.id) ?: return@launch
+            if(latest.ownerId!=selected.ownerId || latest.outcome!=selected.outcome || latest.stage!=selected.stage) {
+                Snackbar.make(toolbar,"This interview changed. Review its latest status before closing it.",Snackbar.LENGTH_LONG).show()
+                return@launch
+            }
+            repository.saveChanges(latest,latest.copy(outcome=InterviewOutcome.NO_RESPONSE))
+            (application as InterviewApplication).schedulePendingSync(latest.ownerId)
+        }
+    }
     private fun updateInterviewOutcome(interview: Interview, newOutcome: InterviewOutcome) {
         lifecycleScope.launch {
             val updatedInterview = interview.copy(outcome = newOutcome)

@@ -26,6 +26,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import tools.interviews.android.data.InterviewDatabase
 import tools.interviews.android.data.InterviewRepository
 import tools.interviews.android.data.api.SyncService
@@ -72,6 +74,13 @@ class InterviewApplication : Application() {
             { APIService.getInstance().setAuthToken(null) }, File(cacheDir, "account-exports"))
     }
 
+    val followUpQueue: tools.interviews.android.data.api.FollowUpQueue by lazy { tools.interviews.android.data.api.FollowUpQueue(database.toolDraftDao(),accountGate,
+        APIService.getInstance(),::ownerNow,{ authenticateAccount(it) },{ block->database.withTransaction { block() } }) }
+    fun scheduleFollowUpSync(expectedOwner:String=ownerNow()) {
+        if(expectedOwner==AccountOwners.GUEST) return
+        applicationScope.launch { if(ownerNow()==expectedOwner) try { followUpQueue.push(expectedOwner) } catch(cancelled:CancellationException) { throw cancelled } catch(_:Exception) {} }
+    }
+    fun scheduleFullSync() { applicationScope.launch { try { syncService.syncAll() } catch(cancelled:CancellationException) { throw cancelled } catch(_:Exception) {} } }
     val storySaver by lazy { tools.interviews.android.data.api.StorySaveService(database.toolDraftDao(),accountGate,
         APIService.getInstance(),::ownerNow,{ authenticateAccount(it) }) }
     fun refreshDebriefReminders() {
@@ -79,7 +88,10 @@ class InterviewApplication : Application() {
             accountGate.run {
                 val expected=ownerNow()
                 val rows=database.interviewDao().getAllInterviews(expected).first()
-                if(ownerNow()==expected) tools.interviews.android.reminders.DebriefReminders.schedule(this@InterviewApplication,rows)
+                if(ownerNow()==expected) {
+                    tools.interviews.android.reminders.DebriefReminders.schedule(this@InterviewApplication,rows)
+                    tools.interviews.android.reminders.FollowUpReminders.schedule(this@InterviewApplication,expected)
+                }
             }
         }
     }
@@ -96,14 +108,15 @@ class InterviewApplication : Application() {
     val database by lazy { InterviewDatabase.getDatabase(this) }
     val repository by lazy { InterviewRepository(database.interviewDao(), database.companyDao(), accountGate,
         owner, ::ownerNow, { block -> database.withTransaction { block() } }) }
-    val syncService by lazy {
+    val syncService: SyncService by lazy {
         SyncService(
             interviewDao = database.interviewDao(),
             companyDao = database.companyDao(),
             gate = accountGate,
             currentAccount = { Clerk.user?.id },
             authenticate = { authenticateAccount(it) },
-            transaction = { block -> database.withTransaction { block() } }
+            transaction = { block -> database.withTransaction { block() } },
+            additionalWrites = { owner -> check(followUpQueue.pushLocked(owner)==0) { "Some follow-ups need retry. Your records are saved on this device." } }
         )
     }
 
@@ -124,10 +137,23 @@ class InterviewApplication : Application() {
         }
 
         applicationScope.launch {
-            owner.drop(1).collect { tools.interviews.android.reminders.DebriefReminders.cancel(this@InterviewApplication) }
+            owner.drop(1).collect {
+                tools.interviews.android.reminders.DebriefReminders.cancel(this@InterviewApplication)
+                tools.interviews.android.reminders.FollowUpReminders.cancel(this@InterviewApplication)
+            }
         }
         applicationScope.launch {
             repository.allInterviews.collect { rows -> tools.interviews.android.reminders.DebriefReminders.schedule(this@InterviewApplication,rows) }
+        }
+
+        applicationScope.launch {
+            combine(owner,accountGate.isBlocked,Clerk.isInitialized) { selected,blocked,ready -> if(!blocked && ready) selected else AccountOwners.GUEST }
+                .distinctUntilChanged().collect { selected ->
+                    if(selected!=AccountOwners.GUEST) {
+                        scheduleFollowUpSync(selected)
+                        tools.interviews.android.reminders.FollowUpReminders.schedule(this@InterviewApplication,selected)
+                    }
+                }
         }
 
         applicationScope.launch(Dispatchers.IO) {

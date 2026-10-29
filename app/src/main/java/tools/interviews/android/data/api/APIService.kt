@@ -23,6 +23,11 @@ interface InterviewsAPI {
     @PUT("applications/{id}/first-response")
     suspend fun saveFirstReply(@Path("id") id: Int, @Body body: okhttp3.RequestBody): JsonObject
 
+    @GET("follow-ups") suspend fun followUps(): com.google.gson.JsonArray
+    @POST("native/follow-ups") suspend fun recordFollowUp(@Body body: okhttp3.RequestBody): JsonObject
+    @GET("stale-applications") suspend fun staleApplications(): JsonObject
+    @POST("stale-applications") suspend fun closeStale(@Body body: okhttp3.RequestBody): JsonObject
+
     @GET("interview/{id}/prep")
     suspend fun prep(@Path("id") id: Int): JsonObject
     @PUT("interview/{id}/prep")
@@ -82,7 +87,7 @@ interface InterviewsAPI {
     ): APIInterview
 }
 
-class APIService private constructor(private val baseUrl: String = BASE_URL, private val calls: okhttp3.Call.Factory? = null) : SyncWrites, ApplicationTimelineRemote, ReflectionRemote, StoryWrites {
+class APIService private constructor(private val baseUrl: String = BASE_URL, private val calls: okhttp3.Call.Factory? = null) : SyncWrites, ApplicationTimelineRemote, ReflectionRemote, StoryWrites, FollowUpWrites {
     companion object {
         private const val BASE_URL = "https://interviews.tools/api/"
 
@@ -184,6 +189,11 @@ class APIService private constructor(private val baseUrl: String = BASE_URL, pri
         if (!response.isSuccessful) throw handleHttpException(retrofit2.HttpException(response))
         return response.body()?.applicationId
     }
+    suspend fun followUps() = getApi().followUps()
+    override suspend fun recordFollowUp(body: JsonObject) = getApi().recordFollowUp(body.toString().toRequestBody("application/json".toMediaType()))
+    suspend fun staleApplications() = getApi().staleApplications()
+    suspend fun closeStale(body: JsonObject) = getApi().closeStale(body.toString().toRequestBody("application/json".toMediaType()))
+
     override suspend fun prep(id: Int) = getApi().prep(id)
     override suspend fun updatePrep(id: Int, body: JsonObject) {
         val response = getApi().updatePrep(id, body.toString().toRequestBody("application/json".toMediaType()))
