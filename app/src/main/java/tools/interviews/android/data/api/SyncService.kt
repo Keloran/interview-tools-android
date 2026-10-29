@@ -1,6 +1,9 @@
 package tools.interviews.android.data.api
 
 import tools.interviews.android.data.account.AccountOperationGate
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +25,10 @@ class SyncService(
     private val interviewDao: InterviewDao,
     private val companyDao: CompanyDao,
     private val apiService: APIService = APIService.getInstance(),
-    private val gate: AccountOperationGate = AccountOperationGate()
+    private val gate: AccountOperationGate = AccountOperationGate(),
+    private val currentAccount: () -> String? = { null },
+    private val remoteFactory: () -> SyncRemote = { apiService.syncRemote() },
+    private val transaction: suspend (suspend () -> Unit) -> Unit = { block -> block() }
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -51,40 +57,39 @@ class SyncService(
         _syncError.value = null
 
         try {
-            Log.d(TAG, "Starting sync...")
-
-            // Step 1: Push local-only interviews to server first
-            Log.d(TAG, "Step 1: Pushing local interviews...")
-            pushLocalInterviews()
-            Log.d(TAG, "Step 1 complete")
-
-            // Step 2: Sync companies from server
-            Log.d(TAG, "Step 2: Syncing companies...")
-            syncCompanies()
-            Log.d(TAG, "Step 2 complete")
-
-            // Step 3: Pull remote interviews and update local database
-            Log.d(TAG, "Step 3: Pulling remote interviews...")
-            pullRemoteInterviews()
-            Log.d(TAG, "Step 3 complete")
-
+            val account = currentAccount() ?: error("Please sign in before syncing.")
+            pushLocalInterviews { if (currentAccount() != account) throw CancellationException("Account changed during sync.") }
+            val remote = remoteFactory()
+            fun checkAccount() {
+                remote.checkSession()
+                if (currentAccount() != account) throw CancellationException("Account changed during sync.")
+            }
+            checkAccount()
+            val snapshot = InterviewSyncSnapshotLoader(remote).load(interviewDao.getAllServerIds().toSet())
+            checkAccount()
+            // No local reconciliation occurs until all pages and missing-ID lookups have succeeded.
+            transaction {
+                currentCoroutineContext().ensureActive()
+                checkAccount()
+                syncCompanies(snapshot.companies)
+                pullRemoteInterviews(snapshot)
+                currentCoroutineContext().ensureActive()
+                checkAccount()
+            }
             _lastSyncDate.value = LocalDateTime.now()
-            Log.d(TAG, "Sync completed successfully")
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             _syncError.value = e
-            Log.e(TAG, "Sync error: ${e.message}", e)
-            e.printStackTrace()
+            Log.e(TAG, "Sync failed", e)
+        } finally {
+            _isSyncing.value = false
         }
-
-        _isSyncing.value = false
     }
 
     // MARK: - Sync Companies
 
-    private suspend fun syncCompanies() {
-        Log.d(TAG, "Syncing companies...")
-
-        val apiCompanies = apiService.fetchCompanies()
+    private suspend fun syncCompanies(apiCompanies: List<APICompany>) {
         Log.d(TAG, "Received ${apiCompanies.size} company(ies) from server")
 
         // Get all local server IDs for tracking deletions
@@ -128,14 +133,14 @@ class SyncService(
         // Delete local companies that no longer exist on server
         // (Only delete those that have a serverId - local-only companies are preserved)
         for (deletedServerId in localServerIds) {
-            companyDao.deleteByServerId(deletedServerId)
+            companyDao.deleteUnreferencedByServerId(deletedServerId)
             Log.d(TAG, "Deleted company with serverId: $deletedServerId (removed from server)")
         }
     }
 
     // MARK: - Push Local Interviews
 
-    private suspend fun pushLocalInterviews() {
+    private suspend fun pushLocalInterviews(checkAccount: () -> Unit) {
         // Get all interviews that haven't been synced yet (serverId is null)
         val unsyncedInterviews = interviewDao.getUnsyncedInterviews()
 
@@ -149,13 +154,17 @@ class SyncService(
         for (interview in unsyncedInterviews) {
             try {
                 // Push to server
+                checkAccount()
                 val apiInterview = pushInterviewUnsafe(interview)
+                checkAccount()
 
                 // Update local interview with server ID
                 val updatedInterview = interview.copy(serverId = apiInterview.id)
                 interviewDao.update(updatedInterview)
 
                 Log.d(TAG, "Pushed interview '${interview.jobTitle}' -> server ID: ${apiInterview.id}")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to push interview '${interview.jobTitle}': ${e.message}")
                 // Continue with other interviews even if one fails
@@ -165,14 +174,11 @@ class SyncService(
 
     // MARK: - Pull Remote Interviews
 
-    private suspend fun pullRemoteInterviews() {
-        Log.d(TAG, "Pulling remote interviews...")
-
-        val apiInterviews = apiService.fetchInterviews(includePast = true)
+    private suspend fun pullRemoteInterviews(snapshot: InterviewSyncSnapshot) {
+        val apiInterviews = snapshot.interviews
         Log.d(TAG, "Received ${apiInterviews.size} interview(s) from server")
 
         // Get all local server IDs for tracking deletions
-        val localServerIds = interviewDao.getAllServerIds().toMutableSet()
 
         for (apiInterview in apiInterviews) {
             // Check if we already have this interview locally (by serverId)
@@ -201,12 +207,11 @@ class SyncService(
             }
 
             // Remove from tracking set (interview still exists on server)
-            localServerIds.remove(apiInterview.id)
         }
 
         // Delete local interviews that no longer exist on server
         // (Only delete those that have a serverId - local-only interviews are preserved)
-        for (deletedServerId in localServerIds) {
+        for (deletedServerId in snapshot.deletedIds) {
             interviewDao.deleteByServerId(deletedServerId)
             Log.d(TAG, "Deleted interview with serverId: $deletedServerId (removed from server)")
         }

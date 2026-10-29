@@ -1,0 +1,95 @@
+package tools.interviews.android.data
+
+import androidx.room.Room
+import androidx.room.withTransaction
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.IOException
+import java.time.LocalDate
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.*
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import tools.interviews.android.data.api.APICompany
+import tools.interviews.android.data.api.APIInterview
+import tools.interviews.android.data.api.APIStage
+import tools.interviews.android.data.api.SyncRemote
+import tools.interviews.android.data.api.SyncService
+import tools.interviews.android.model.Company
+import tools.interviews.android.model.Interview
+import tools.interviews.android.model.InterviewStage
+
+@RunWith(AndroidJUnit4::class)
+class SyncReconciliationTest {
+    private lateinit var db: InterviewDatabase
+    private var account = "account-a"
+    @Before fun setup() { db = Room.inMemoryDatabaseBuilder(InstrumentationRegistry.getInstrumentation().targetContext, InterviewDatabase::class.java).build() }
+    @After fun close() { db.close() }
+    private suspend fun seed() {
+        db.companyDao().insert(Company(id = 1, serverId = 10, name = "Example"))
+        for (id in listOf(1, 999)) db.interviewDao().insert(Interview(id = id.toLong(), serverId = id, companyId = 1,
+            companyName = "Example", jobTitle = "Original $id", stage = InterviewStage.APPLIED, applicationDate = LocalDate.of(2026, 1, 1)))
+    }
+    private fun service(remote: SyncRemote, failCommit: Boolean = false) = SyncService(db.interviewDao(), db.companyDao(),
+        currentAccount = { account }, remoteFactory = { remote }, transaction = { block -> db.withTransaction {
+            block()
+            if (failCommit) throw IOException("commit failed")
+        } })
+
+    @Test fun verified404RemovesOnlyTheMissingRecordAfterAllPagesSucceed() = runBlocking {
+        seed()
+        val service = service(Remote())
+        service.syncAll()
+        assertNull(service.syncError.value)
+        assertNotNull(service.lastSyncDate.value)
+        assertEquals("Updated 1", db.interviewDao().getInterviewById(1)!!.jobTitle)
+        assertNull(db.interviewDao().getInterviewById(999))
+    }
+    @Test fun failedSecondPagePreservesTheEntirePreviousCache() = runBlocking {
+        seed()
+        val remote = Remote().apply { failPage = true }
+        val service = service(remote)
+        service.syncAll()
+        assertNotNull(service.syncError.value)
+        assertNull(service.lastSyncDate.value)
+        assertEquals("Original 1", db.interviewDao().getInterviewById(1)!!.jobTitle)
+        assertNotNull(db.interviewDao().getInterviewById(999))
+    }
+    @Test fun failedTransactionRollsBackUpdatesAndVerifiedDeletionsTogether() = runBlocking {
+        seed()
+        val service = service(Remote(), failCommit = true)
+        service.syncAll()
+        assertNotNull(service.syncError.value)
+        assertEquals("Original 1", db.interviewDao().getInterviewById(1)!!.jobTitle)
+        assertNotNull(db.interviewDao().getInterviewById(999))
+    }
+    @Test fun accountChangeDuringDownloadLeavesOldAccountDataUntouched() = runBlocking {
+        seed()
+        val remote = Remote().apply { switchAccount = true }
+        val service = service(remote)
+        assertTrue(runCatching { service.syncAll() }.exceptionOrNull() is CancellationException)
+        assertFalse(service.isSyncing.value)
+        assertNull(service.lastSyncDate.value)
+        assertEquals("Original 1", db.interviewDao().getInterviewById(1)!!.jobTitle)
+        assertNotNull(db.interviewDao().getInterviewById(999))
+    }
+    private inner class Remote : SyncRemote {
+        var failPage = false
+        var switchAccount = false
+        override fun checkSession() {}
+        override suspend fun companies() = listOf(APICompany(10, "Example"))
+        override suspend fun interviews(take: Int, skip: Int): List<APIInterview> {
+            if (switchAccount) account = "account-b"
+            if (failPage && skip > 0) throw IOException("page failed")
+            return if (failPage) (1..take).map(::row) else listOf(row(1))
+        }
+        override suspend fun interview(id: Int): APIInterview? = null
+    }
+    private fun row(id: Int) = APIInterview(id = id, jobTitle = "Updated $id", company = APICompany(10, "Example"),
+        applicationDate = "2026-01-01T00:00:00Z", stage = APIStage(1, "Applied"), stageMethod = null,
+        date = null, deadline = null, outcome = "AWAITING_RESPONSE", interviewer = null,
+        clientCompany = null, notes = null, metadata = null, link = null)
+}

@@ -2,8 +2,6 @@ name: PR Build Check
 
 on:
   pull_request:
-    branches:
-      - main
 
 jobs:
   build:
@@ -32,11 +30,14 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
+      - name: Compile release variant
+        run: ./gradlew compileReleaseKotlin
+
       # Run unit tests
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest
   device-tests:
-    name: Account data device tests
+    name: Android device tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

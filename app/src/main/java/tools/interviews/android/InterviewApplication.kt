@@ -1,5 +1,6 @@
 package tools.interviews.android
 
+import androidx.room.withTransaction
 import android.app.Application
 import android_app.BuildConfig
 import java.io.File
@@ -45,7 +46,9 @@ class InterviewApplication : Application() {
         SyncService(
             interviewDao = database.interviewDao(),
             companyDao = database.companyDao(),
-            gate = accountGate
+            gate = accountGate,
+            currentAccount = { Clerk.user?.id },
+            transaction = { block -> database.withTransaction { block() } }
         )
     }
 
