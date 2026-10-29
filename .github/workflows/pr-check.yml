@@ -112,5 +112,10 @@ jobs:
       pull-requests: write
     steps:
       - uses: release-drafter/release-drafter@v7.10.0
+        with:
+          # Temporary PR merge refs disappear when a stack is merged during checks.
+          config-name: release-drafter.yml@${{ github.event.pull_request.head.sha }}
+          commitish: ${{ github.event.pull_request.head.sha }}
+          dry-run: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
