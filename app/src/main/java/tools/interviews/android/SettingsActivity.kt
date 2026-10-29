@@ -1,5 +1,6 @@
 package tools.interviews.android
 
+import tools.interviews.android.data.account.AccountOwners
 import android.content.ClipData
 import android.content.Intent
 import androidx.core.content.FileProvider
@@ -60,6 +61,8 @@ class SettingsActivity : AppCompatActivity() {
 
     private val accountData get() = (application as InterviewApplication).accountData
     private var accountActionBusy = false
+    private var localImportCount = 0
+    private var legacyLocalCount = 0
     private lateinit var sectionAccountData: LinearLayout
     private lateinit var exportApplications: MaterialButton
     private lateinit var exportStories: MaterialButton
@@ -94,6 +97,7 @@ class SettingsActivity : AppCompatActivity() {
         setupVersionDoubleTap()
         observeAuthState()
         observeSyncState()
+        observeLocalData()
         displayVersion()
     }
 
@@ -178,6 +182,8 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
+        findViewById<MaterialButton>(R.id.importLocalData).setOnClickListener { confirmLocalImport(false) }
+        findViewById<MaterialButton>(R.id.restoreLegacyLocalData).setOnClickListener { confirmLocalImport(true) }
         exportApplications.setOnClickListener { exportData(ExportKind.APPLICATIONS) }
         exportStories.setOnClickListener { exportData(ExportKind.STORIES) }
         deleteAccount.setOnClickListener { confirmAccountDeletion() }
@@ -188,8 +194,8 @@ class SettingsActivity : AppCompatActivity() {
             val user = Clerk.user
             if (user != null) {
                 // User is signed in, sign them out
-                lifecycleScope.launch {
-                    Clerk.signOut()
+                runAccountAction {
+                    (application as InterviewApplication).signOutAccount()
                     updateAuthUI()
                 }
             } else {
@@ -218,14 +224,24 @@ class SettingsActivity : AppCompatActivity() {
     private fun observeAuthState() {
         lifecycleScope.launch {
             Clerk.userFlow.collect { user ->
-                updateAuthUI(user)
+                updateAuthUI()
             }
         }
     }
 
-    private fun updateAuthUI(user: com.clerk.api.user.User? = null) {
-        val currentUser = user ?: Clerk.user
+    private fun updateAuthUI() {
+        val currentUser = Clerk.user
         val pending = accountData.pendingCleanup
+        findViewById<MaterialButton>(R.id.importLocalData).apply {
+            isVisible = currentUser != null && localImportCount > 0
+            isEnabled = !pending && !accountActionBusy
+            text = getString(R.string.import_guest_data, localImportCount)
+        }
+        findViewById<MaterialButton>(R.id.restoreLegacyLocalData).apply {
+            isVisible = currentUser == null && legacyLocalCount > 0
+            isEnabled = !pending && !accountActionBusy
+            text = getString(R.string.restore_legacy_local, legacyLocalCount)
+        }
         sectionAccountData.isVisible = currentUser != null || pending
         findViewById<TextView>(R.id.accountActionStatus).isVisible = accountActionBusy
         exportApplications.isEnabled = currentUser != null && !pending && !accountActionBusy
@@ -298,6 +314,27 @@ class SettingsActivity : AppCompatActivity() {
     }
 
 
+    private fun observeLocalData() {
+        val repository = (application as InterviewApplication).repository
+        lifecycleScope.launch { repository.localImportCount.collect { localImportCount = it; updateAuthUI() } }
+        lifecycleScope.launch { repository.legacyLocalCount.collect { legacyLocalCount = it; updateAuthUI() } }
+        lifecycleScope.launch { repository.legacyCount.collect { findViewById<TextView>(R.id.legacyCacheNotice).isVisible = it > 0 } }
+    }
+
+    private fun confirmLocalImport(restore: Boolean) {
+        val owner = AccountOwners.forUser(Clerk.user?.id)
+        val display = Clerk.user?.primaryEmailAddress?.emailAddress ?: "this account"
+        MaterialAlertDialogBuilder(this)
+            .setMessage(if (restore) getString(R.string.restore_legacy_explanation) else getString(R.string.import_guest_explanation, display))
+            .setNegativeButton(R.string.cancel_account_action, null)
+            .setPositiveButton(if (restore) R.string.confirm_local_restore else R.string.confirm_local_import) { _, _ ->
+                runAccountAction {
+                    (application as InterviewApplication).repository.importLocal(owner, restore)
+                    if (!restore) performSync()
+                }
+            }.show()
+    }
+
     private fun confirmAccountDeletion() {
         if (accountActionBusy) return
         if (accountData.pendingCleanup) {
@@ -307,6 +344,7 @@ class SettingsActivity : AppCompatActivity() {
                 .setPositiveButton(R.string.retry_account_cleanup) { _, _ -> deleteAccountData("delete my account", false) }.show()
             return
         }
+        val expectedAccount = Clerk.user?.id ?: return
         val content = layoutInflater.inflate(R.layout.dialog_delete_account, null)
         val confirmation = content.findViewById<TextInputEditText>(R.id.deleteConfirmation)
         val guests = content.findViewById<MaterialCheckBox>(R.id.clearGuestData)
@@ -321,15 +359,15 @@ class SettingsActivity : AppCompatActivity() {
                 val typed = confirmation.text.toString()
                 val clearGuests = guests.isChecked
                 dialog.dismiss()
-                deleteAccountData(typed, clearGuests)
+                deleteAccountData(typed, clearGuests, expectedAccount)
             }
         }
         dialog.show()
     }
 
-    private fun deleteAccountData(confirmation: String, clearGuests: Boolean) {
+    private fun deleteAccountData(confirmation: String, clearGuests: Boolean, expectedAccount: String? = Clerk.user?.id) {
         runAccountAction {
-            accountData.delete(confirmation, clearGuests)
+            accountData.delete(confirmation, clearGuests, expectedAccount)
             currentCoroutineContext().ensureActive()
             MaterialAlertDialogBuilder(this).setMessage(R.string.account_deleted)
                 .setCancelable(false).setPositiveButton(android.R.string.ok) { _, _ ->
@@ -389,6 +427,7 @@ class SettingsActivity : AppCompatActivity() {
                     Log.d(TAG, "Got auth token, starting sync...")
                     APIService.getInstance().setAuthToken(token.jwt)
                     syncService.syncAll()
+                    syncService.syncError.value?.let { throw it }
 
                     Snackbar.make(itemSyncNow, "Sync completed", Snackbar.LENGTH_SHORT).show()
                 } else {

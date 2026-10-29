@@ -1,5 +1,7 @@
 package tools.interviews.android
 
+import tools.interviews.android.util.finishOnAccountChange
+import tools.interviews.android.data.account.AccountOwners
 import android.app.DatePickerDialog
 import android.os.Bundle
 import android.widget.ArrayAdapter
@@ -72,6 +74,7 @@ class EditInterviewActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        finishOnAccountChange()
         setContentView(R.layout.activity_add_interview)
 
         repository = (application as InterviewApplication).repository
@@ -124,7 +127,7 @@ class EditInterviewActivity : AppCompatActivity() {
     private fun loadData() {
         lifecycleScope.launch {
             // Load companies for autocomplete
-            existingCompanies.addAll(repository.allCompanies.first())
+            existingCompanies.addAll(repository.companyNames())
             setupCompanyAutocomplete()
 
             // Load the interview
@@ -365,6 +368,7 @@ class EditInterviewActivity : AppCompatActivity() {
 
         val updatedInterview = Interview(
             id = interviewId,
+            ownerId = originalInterview?.ownerId ?: return,
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = editCompanyName.text.toString().trim(),
             stage = selectedStage,

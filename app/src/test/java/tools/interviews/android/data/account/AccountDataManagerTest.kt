@@ -28,9 +28,9 @@ class AccountDataManagerTest {
     private val checkpoint = MemoryCheckpoint()
     private val gate = AccountOperationGate()
 
-    private fun manager() = AccountDataManager(api, { account }, { "fresh-token" }, checkpoint, gate, {
+    private fun manager() = AccountDataManager(api, { account }, { "fresh-token" }, checkpoint, gate, { _, removeGuests ->
         if (failCleanup) throw IOException("Local storage unavailable")
-        clears.add(it)
+        clears.add(removeGuests)
     }, {
         if (failSignOut) throw IOException("Sign out failed")
         signedOut++
@@ -50,7 +50,7 @@ class AccountDataManagerTest {
             assertEquals(0, signedOut)
             Unit
         }
-        val exports = File(temporary.root, "exports").apply { mkdirs() }
+        val exports = File(File(temporary.root, "exports"), AccountOwners.exportFolder("account-a")).apply { mkdirs() }
         File(exports, "private.csv").writeText("private notes")
         val subject = manager()
         subject.delete("delete my account", false)
@@ -60,7 +60,7 @@ class AccountDataManagerTest {
         assertNull(checkpoint.value)
         assertFalse(subject.pendingCleanup)
         assertFalse(gate.isBlocked.value)
-        assertTrue(exports.listFiles()!!.isEmpty())
+        assertFalse(exports.exists())
     }
 
     @Test fun `explicit guest removal is passed to cleanup only after success`() = runTest {
@@ -134,7 +134,7 @@ class AccountDataManagerTest {
     }
 
     @Test fun `export uses current credentials and discards a result after account switch`() = runTest {
-        val directory = File(temporary.root, "exports").apply { mkdirs() }
+        val directory = File(File(temporary.root, "exports"), AccountOwners.exportFolder("account-a")).apply { mkdirs() }
         val file = File(directory, "stories.csv").apply { writeText("notes") }
         coEvery { api.export("fresh-token", ExportKind.STORIES, directory) } coAnswers { account = "account-b"; file }
         assertTrue(runCatching { manager().export(ExportKind.STORIES) }.isFailure)
@@ -162,6 +162,22 @@ class AccountDataManagerTest {
         assertEquals(1, signedOut)
         assertNull(checkpoint.value)
         assertFalse(gate.isBlocked.value)
+    }
+
+    @Test fun `deletion preserves exports from another account`() = runTest {
+        coEvery { api.deleteAccount(any(), any()) } returns Unit
+        val other = File(File(File(temporary.root, "exports"), AccountOwners.exportFolder("account-b")), "other.csv")
+        other.parentFile!!.mkdirs()
+        other.writeText("Other account notes")
+        manager().delete("delete my account", false)
+        assertEquals("Other account notes", other.readText())
+    }
+
+    @Test fun `confirmation stays bound to the original account if the session switches`() = runTest {
+        account = "account-b"
+        assertTrue(runCatching { manager().delete("delete my account", false, "account-a") }.isFailure)
+        coVerify(exactly = 0) { api.deleteAccount(any(), any()) }
+        assertTrue(clears.isEmpty())
     }
 
     private class MemoryCheckpoint : DeletionCheckpoint {

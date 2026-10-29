@@ -1,5 +1,7 @@
 package tools.interviews.android.model
 
+import tools.interviews.android.data.account.AccountOwners
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -17,11 +19,12 @@ import java.time.LocalDateTime
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index(value = ["companyId"])]
+    indices = [Index(value = ["companyId"]), Index(value = ["ownerId"])]
 )
 data class Interview(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    @ColumnInfo(defaultValue = "'guest'") val ownerId: String = AccountOwners.GUEST,
     val serverId: Int? = null, // Server ID - null means not synced yet
     val companyId: Long? = null, // Foreign key to Company table
     val jobTitle: String,

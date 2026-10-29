@@ -1,5 +1,6 @@
 package tools.interviews.android.data.api
 
+import tools.interviews.android.data.account.AccountOwners
 import tools.interviews.android.data.account.AccountOperationGate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -27,6 +28,7 @@ class SyncService(
     private val apiService: APIService = APIService.getInstance(),
     private val gate: AccountOperationGate = AccountOperationGate(),
     private val currentAccount: () -> String? = { null },
+    private val authenticate: suspend (String) -> Unit = {},
     private val remoteFactory: () -> SyncRemote = { apiService.syncRemote() },
     private val transaction: suspend (suspend () -> Unit) -> Unit = { block -> block() }
 ) {
@@ -45,6 +47,11 @@ class SyncService(
 
     private val gson = Gson()
 
+    fun resetSessionState() {
+        _lastSyncDate.value = null
+        _syncError.value = null
+    }
+
     // MARK: - Sync All Data (Push then Pull)
 
     suspend fun syncAll() = gate.run {
@@ -58,21 +65,23 @@ class SyncService(
 
         try {
             val account = currentAccount() ?: error("Please sign in before syncing.")
-            pushLocalInterviews { if (currentAccount() != account) throw CancellationException("Account changed during sync.") }
+            authenticate(account)
+            if (currentAccount() != account) throw CancellationException("Account changed before syncing.")
+            pushLocalInterviews(account) { if (currentAccount() != account) throw CancellationException("Account changed during sync.") }
             val remote = remoteFactory()
             fun checkAccount() {
                 remote.checkSession()
                 if (currentAccount() != account) throw CancellationException("Account changed during sync.")
             }
             checkAccount()
-            val snapshot = InterviewSyncSnapshotLoader(remote).load(interviewDao.getAllServerIds().toSet())
+            val snapshot = InterviewSyncSnapshotLoader(remote).load(interviewDao.getAllServerIds(account).toSet())
             checkAccount()
             // No local reconciliation occurs until all pages and missing-ID lookups have succeeded.
             transaction {
                 currentCoroutineContext().ensureActive()
                 checkAccount()
-                syncCompanies(snapshot.companies)
-                pullRemoteInterviews(snapshot)
+                syncCompanies(snapshot.companies, account)
+                pullRemoteInterviews(snapshot, account)
                 currentCoroutineContext().ensureActive()
                 checkAccount()
             }
@@ -80,7 +89,7 @@ class SyncService(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {
-            _syncError.value = e
+            _syncError.value = if (e is retrofit2.HttpException && e.code() == 401) APIError.Unauthorized else e
             Log.e(TAG, "Sync failed", e)
         } finally {
             _isSyncing.value = false
@@ -89,35 +98,37 @@ class SyncService(
 
     // MARK: - Sync Companies
 
-    private suspend fun syncCompanies(apiCompanies: List<APICompany>) {
+    private suspend fun syncCompanies(apiCompanies: List<APICompany>, ownerId: String) {
         Log.d(TAG, "Received ${apiCompanies.size} company(ies) from server")
 
         // Get all local server IDs for tracking deletions
-        val localServerIds = companyDao.getAllServerIds().toMutableSet()
+        val localServerIds = companyDao.getAllServerIds(ownerId).toMutableSet()
 
         for (apiCompany in apiCompanies) {
             // Check if we already have this company locally (by serverId)
-            val existing = companyDao.getCompanyByServerId(apiCompany.id)
+            val existing = companyDao.getCompanyByServerId(apiCompany.id, ownerId) ?: companyDao.getLegacyByServerId(apiCompany.id)
 
             if (existing != null) {
                 // Update existing company, preserving the local id
                 val updatedCompany = existing.copy(
                     name = apiCompany.name,
+                    ownerId = ownerId,
                     serverId = apiCompany.id
                 )
                 companyDao.update(updatedCompany)
                 Log.d(TAG, "Updated local company: ${updatedCompany.name}")
             } else {
                 // Check if we have a local company with the same name but no serverId
-                val localByName = companyDao.getCompanyByName(apiCompany.name)
+                val localByName = companyDao.getCompanyByName(apiCompany.name, ownerId)
                 if (localByName != null && localByName.serverId == null) {
                     // Merge: update local company with server ID
-                    val mergedCompany = localByName.copy(serverId = apiCompany.id)
+                    val mergedCompany = localByName.copy(serverId = apiCompany.id, ownerId = ownerId)
                     companyDao.update(mergedCompany)
                     Log.d(TAG, "Merged local company '${apiCompany.name}' with server ID ${apiCompany.id}")
                 } else {
                     // Insert new company from server
                     val newCompany = Company(
+                        ownerId = ownerId,
                         serverId = apiCompany.id,
                         name = apiCompany.name
                     )
@@ -133,16 +144,16 @@ class SyncService(
         // Delete local companies that no longer exist on server
         // (Only delete those that have a serverId - local-only companies are preserved)
         for (deletedServerId in localServerIds) {
-            companyDao.deleteUnreferencedByServerId(deletedServerId)
+            companyDao.deleteUnreferencedByServerId(deletedServerId, ownerId)
             Log.d(TAG, "Deleted company with serverId: $deletedServerId (removed from server)")
         }
     }
 
     // MARK: - Push Local Interviews
 
-    private suspend fun pushLocalInterviews(checkAccount: () -> Unit) {
+    private suspend fun pushLocalInterviews(ownerId: String, checkAccount: () -> Unit) {
         // Get all interviews that haven't been synced yet (serverId is null)
-        val unsyncedInterviews = interviewDao.getUnsyncedInterviews()
+        val unsyncedInterviews = interviewDao.getUnsyncedInterviews(ownerId)
 
         if (unsyncedInterviews.isEmpty()) {
             Log.d(TAG, "No local interviews to push")
@@ -174,7 +185,7 @@ class SyncService(
 
     // MARK: - Pull Remote Interviews
 
-    private suspend fun pullRemoteInterviews(snapshot: InterviewSyncSnapshot) {
+    private suspend fun pullRemoteInterviews(snapshot: InterviewSyncSnapshot, ownerId: String) {
         val apiInterviews = snapshot.interviews
         Log.d(TAG, "Received ${apiInterviews.size} interview(s) from server")
 
@@ -182,17 +193,18 @@ class SyncService(
 
         for (apiInterview in apiInterviews) {
             // Check if we already have this interview locally (by serverId)
-            val existing = interviewDao.getInterviewByServerId(apiInterview.id)
+            val existing = interviewDao.getInterviewByServerId(apiInterview.id, ownerId) ?: interviewDao.getLegacyByServerId(apiInterview.id)
 
             // Find or create the company for this interview
-            val company = findOrCreateCompany(apiInterview.company)
+            val company = findOrCreateCompany(apiInterview.company, ownerId)
 
             if (existing != null) {
                 // Update existing interview, preserving the local id
                 val updatedInterview = mapApiInterviewToLocal(
                     apiInterview,
                     existingLocalId = existing.id,
-                    companyId = company.id
+                    companyId = company.id,
+                    ownerId = ownerId
                 )
                 interviewDao.update(updatedInterview)
                 Log.d(TAG, "Updated local interview: ${updatedInterview.jobTitle}")
@@ -200,7 +212,8 @@ class SyncService(
                 // Insert new interview from server
                 val newInterview = mapApiInterviewToLocal(
                     apiInterview,
-                    companyId = company.id
+                    companyId = company.id,
+                    ownerId = ownerId
                 )
                 interviewDao.insert(newInterview)
                 Log.d(TAG, "Inserted new interview from server: ${newInterview.jobTitle}")
@@ -212,19 +225,19 @@ class SyncService(
         // Delete local interviews that no longer exist on server
         // (Only delete those that have a serverId - local-only interviews are preserved)
         for (deletedServerId in snapshot.deletedIds) {
-            interviewDao.deleteByServerId(deletedServerId)
+            interviewDao.deleteByServerId(deletedServerId, ownerId)
             Log.d(TAG, "Deleted interview with serverId: $deletedServerId (removed from server)")
         }
     }
 
     // MARK: - Find or Create Company
 
-    private suspend fun findOrCreateCompany(apiCompany: APICompany): Company {
+    private suspend fun findOrCreateCompany(apiCompany: APICompany, ownerId: String): Company {
         // First try to find by server ID
-        companyDao.getCompanyByServerId(apiCompany.id)?.let { return it }
+        companyDao.getCompanyByServerId(apiCompany.id, ownerId)?.let { return it }
 
         // Then try to find by name and update with server ID
-        companyDao.getCompanyByName(apiCompany.name)?.let { existing ->
+        companyDao.getCompanyByName(apiCompany.name, ownerId)?.let { existing ->
             if (existing.serverId == null) {
                 val updated = existing.copy(serverId = apiCompany.id)
                 companyDao.update(updated)
@@ -235,6 +248,7 @@ class SyncService(
 
         // Create new company
         val newCompany = Company(
+            ownerId = ownerId,
             serverId = apiCompany.id,
             name = apiCompany.name
         )
@@ -244,9 +258,13 @@ class SyncService(
 
     // MARK: - Push Single Interview to API
 
-    suspend fun pushInterview(interview: Interview): APIInterview = gate.run { pushInterviewUnsafe(interview) }
+    suspend fun pushInterview(interview: Interview): APIInterview = gate.run {
+        authenticate(interview.ownerId)
+        pushInterviewUnsafe(interview)
+    }
 
     private suspend fun pushInterviewUnsafe(interview: Interview): APIInterview {
+        if (interview.ownerId != currentAccount()) throw CancellationException("Interview belongs to another account.")
         val request = CreateInterviewRequest(
             stage = interview.stage.displayName,
             companyName = interview.companyName,
@@ -270,6 +288,8 @@ class SyncService(
     }
 
     suspend fun updateRemoteInterview(id: Int, interview: Interview): APIInterview = gate.run {
+        authenticate(interview.ownerId)
+        if (interview.ownerId != currentAccount()) throw CancellationException("Interview belongs to another account.")
         val request = UpdateInterviewRequest(
             outcome = interview.outcome.name,  // Server expects uppercase: REJECTED, AWAITING_RESPONSE, etc.
             stage = interview.stage.displayName,
@@ -288,7 +308,8 @@ class SyncService(
     private fun mapApiInterviewToLocal(
         apiInterview: APIInterview,
         existingLocalId: Long? = null,
-        companyId: Long? = null
+        companyId: Long? = null,
+        ownerId: String = AccountOwners.GUEST
     ): Interview {
         // Parse application date
         val applicationDate = parseDate(apiInterview.applicationDate) ?: LocalDate.now()
@@ -317,6 +338,7 @@ class SyncService(
 
         return Interview(
             id = existingLocalId ?: 0, // Use existing local ID or let Room auto-generate
+            ownerId = ownerId,
             serverId = apiInterview.id, // Always set the server ID
             companyId = companyId, // Link to Company table
             jobTitle = apiInterview.jobTitle,

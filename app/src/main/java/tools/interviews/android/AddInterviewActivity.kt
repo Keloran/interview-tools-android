@@ -1,5 +1,7 @@
 package tools.interviews.android
 
+import tools.interviews.android.util.finishOnAccountChange
+import tools.interviews.android.data.account.AccountOwners
 import android.app.DatePickerDialog
 import android.os.Bundle
 import android.util.Log
@@ -81,6 +83,7 @@ class AddInterviewActivity : AppCompatActivity() {
     private var initialDate: LocalDate? = null  // Store the date passed from calendar
     private var existingCompanies = mutableListOf<String>()
     private var isNextStageMode = false
+    private var screenOwner = AccountOwners.GUEST
     private var previousInterviewId: Long? = null
     private var originalApplicationDate: LocalDate? = null
     private var originalMetadataJSON: String? = null
@@ -93,6 +96,8 @@ class AddInterviewActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        finishOnAccountChange()
+        screenOwner = AccountOwners.forUser(Clerk.user?.id)
         setContentView(R.layout.activity_add_interview)
 
         val app = application as InterviewApplication
@@ -438,11 +443,11 @@ class AddInterviewActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 // Step 1: Find or create company locally
-                val localCompany = repository.findOrCreateCompany(companyName)
+                val localCompany = repository.findOrCreateCompany(companyName, screenOwner)
                 Log.d(TAG, "Company '${companyName}' has local id: ${localCompany.id}, serverId: ${localCompany.serverId}")
 
                 // Step 2: Create interview with companyId
-                val interviewWithCompany = interview.copy(companyId = localCompany.id)
+                val interviewWithCompany = interview.copy(companyId = localCompany.id, ownerId = screenOwner)
                 val localId = repository.insert(interviewWithCompany)
                 Log.d(TAG, "Interview saved locally with id: $localId")
 

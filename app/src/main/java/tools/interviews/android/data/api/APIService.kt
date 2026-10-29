@@ -75,6 +75,7 @@ class APIService private constructor() {
 
     @Synchronized
     fun setAuthToken(token: String?) {
+        if (authToken == token) return
         authRevision.incrementAndGet()
         authToken = token
         // Rebuild retrofit when token changes
