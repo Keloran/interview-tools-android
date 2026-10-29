@@ -77,6 +77,8 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.work)
+    // Keep WorkManager and the AndroidX test runtime on the same futures API.
+    implementation(libs.androidx.concurrent.futures.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
