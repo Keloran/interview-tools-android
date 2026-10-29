@@ -16,12 +16,13 @@ import java.time.LocalDate
 class NativeWriteApiTest {
     private val requests = mutableListOf<Request>()
     private var status = 200
+    private var responseBody: String? = null
     private val factory = Call.Factory { sent ->
         requests += sent
         mockk<Call>(relaxed = true).also { call ->
             every { call.request() } returns sent
             every { call.enqueue(any()) } answers {
-                val payload = if (status == 200) """{"id":10,"jobTitle":"Engineer","company":{"id":1,"name":"Example"},"applicationDate":"2026-01-01","outcome":"AWAITING_RESPONSE"}""" else """{"message":"Not found"}"""
+                val payload = responseBody ?: if (status == 200) """{"id":10,"jobTitle":"Engineer","company":{"id":1,"name":"Example"},"applicationDate":"2026-01-01","outcome":"AWAITING_RESPONSE"}""" else """{"message":"Not found"}"""
                 firstArg<Callback>().onResponse(call, Response.Builder().request(sent).protocol(Protocol.HTTP_1_1)
                     .code(status).message("result").body(payload.toResponseBody("application/json".toMediaType())).build())
             }
@@ -66,6 +67,25 @@ class NativeWriteApiTest {
         val body = JsonParser.parseString(Buffer().also { sent.body!!.writeTo(it) }.readUtf8()).asJsonObject
         assertEquals("Employer", body.get("client").asString)
         assertEquals("Listing text", body.get("description").asString)
+    }
+    @Test fun `recruiter directory and contact clears use the application contract`() = runTest {
+        val api = APIService.forTesting("https://example.test/api/", factory)
+        responseBody = "[]"
+        assertEquals(0, api.recruiters().size())
+        assertEquals("/api/recruiters", requests.last().url.encodedPath)
+        responseBody = "{\"saved\":true}"
+        api.updateRecruiter(77, JsonParser.parseString(RecruiterContact(false).json()).asJsonObject)
+        val sent = requests.last()
+        assertEquals("/api/applications/77/recruiter", sent.url.encodedPath)
+        assertEquals("PUT", sent.method)
+        val body = JsonParser.parseString(Buffer().also { sent.body!!.writeTo(it) }.readUtf8()).asJsonObject
+        assertTrue(body.get("recruiterEmail").isJsonNull)
+        assertFalse(body.get("viaRecruiter").asBoolean)
+    }
+    @Test fun `unconfirmed recruiter replies leave the update unacknowledged`() = runTest {
+        responseBody = "{}"
+        val api = APIService.forTesting("https://example.test/api/", factory)
+        assertTrue(runCatching { api.updateRecruiter(77, JsonParser.parseString(RecruiterContact(true,"Sam").json()).asJsonObject) }.isFailure)
     }
     @Test fun `older servers never receive a fallback create at the unsafe legacy URL`() = runTest {
         status = 404

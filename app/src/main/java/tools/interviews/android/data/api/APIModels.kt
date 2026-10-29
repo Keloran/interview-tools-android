@@ -21,7 +21,11 @@ data class APIInterview(
     val link: String?,
     val applicationId: Int? = null,
     val parentId: Int? = null,
-    val durationMinutes: Int? = null
+    val durationMinutes: Int? = null,
+    val viaRecruiter: Boolean? = null,
+    val recruiterName: String? = null,
+    val recruiterEmail: String? = null,
+    val recruiterLinkedIn: String? = null
 )
 
 data class APICompany(

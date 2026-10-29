@@ -44,7 +44,8 @@ class EditInterviewIdentityTest {
         editAndReload(null)
     }
     @Test fun fullOutcomeAndClientFieldsSaveWithoutChangingIdentity() = runBlocking { editAndReload(null, true) }
-    private suspend fun editAndReload(serverId: Int?, changeDetails: Boolean = false) {
+    @Test fun recruiterContactEditsKeepInterviewIdentityAndQueueApplicationUpdate() = runBlocking { editAndReload(null, changeRecruiter=true) }
+    private suspend fun editAndReload(serverId: Int?, changeDetails: Boolean = false, changeRecruiter: Boolean = false) {
         val company = app.database.companyDao().insert(Company(serverId = if (serverId != null) 710 else null, name = "Edit test ${UUID.randomUUID()}"))
         companies += company
         val original = Interview(companyId = company, serverId = serverId, companyName = "Example",
@@ -70,6 +71,11 @@ class EditInterviewIdentityTest {
             assertTrue("Interview form did not load", loaded.await(10, TimeUnit.SECONDS))
             scenario.onActivity { activity ->
                 activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.editNotes).setText("Edited notes")
+                if (changeRecruiter) {
+                    activity.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchViaRecruiter).isChecked = true
+                    activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.editRecruiterName).setText("Sam")
+                    activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.editRecruiterEmail).setText("sam@example.com")
+                }
                 if (changeDetails) {
                     activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.editClientCompany).setText("")
                     val outcomes = activity.findViewById<android.widget.AutoCompleteTextView>(R.id.dropdownOutcome)
@@ -84,11 +90,18 @@ class EditInterviewIdentityTest {
                 kotlinx.coroutines.delay(20)
                 edited = app.database.interviewDao().getInterviewById(id)!!
             }
-            assertEquals(original.copy(id = id, notes = "Edited notes", clientCompany = if (changeDetails) null else original.clientCompany, outcome = if (changeDetails) tools.interviews.android.model.InterviewOutcome.NO_RESPONSE else original.outcome, pendingChanges = edited.pendingChanges, localRevision = edited.localRevision), edited)
+            assertEquals(original.copy(id = id, notes = "Edited notes", recruiterContactJSON = edited.recruiterContactJSON, pendingRecruiterJSON = edited.pendingRecruiterJSON, clientCompany = if (changeDetails) null else original.clientCompany, outcome = if (changeDetails) tools.interviews.android.model.InterviewOutcome.NO_RESPONSE else original.outcome, pendingChanges = edited.pendingChanges, localRevision = edited.localRevision), edited)
             if (changeDetails) {
                 val patch = com.google.gson.JsonParser.parseString(edited.pendingChanges).asJsonObject
                 assertTrue(patch.get("clientCompany").isJsonNull)
                 assertEquals("NO_RESPONSE", patch.get("outcome").asString)
+            }
+            if (changeRecruiter) {
+                assertEquals("Sam", RecruiterContact.parse(edited.recruiterContactJSON).name)
+                assertEquals(edited.recruiterContactJSON, edited.pendingRecruiterJSON)
+            } else {
+                assertNull(edited.pendingRecruiterJSON)
+                assertEquals(original.recruiterContactJSON, edited.recruiterContactJSON)
             }
             assertTrue(edited.localRevision > 0)
             assertEquals("Edited notes", com.google.gson.JsonParser.parseString(edited.pendingChanges).asJsonObject.get("notes").asString)

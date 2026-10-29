@@ -23,6 +23,11 @@ interface InterviewsAPI {
     @PUT("applications/{id}/first-response")
     suspend fun saveFirstReply(@Path("id") id: Int, @Body body: okhttp3.RequestBody): JsonObject
 
+    @GET("recruiters")
+    suspend fun recruiters(): com.google.gson.JsonArray
+    @PUT("applications/{id}/recruiter")
+    suspend fun updateRecruiter(@Path("id") id: Int, @Body body: okhttp3.RequestBody): JsonObject
+
     @POST("check")
     suspend fun checkJob(@Body body: okhttp3.RequestBody): JsonObject
 
@@ -158,6 +163,17 @@ class APIService private constructor(private val baseUrl: String = BASE_URL, pri
                 }
             }
         }
+    }
+
+    override suspend fun applicationIdForInterview(id: Int): Int? {
+        val response = getApi().fetchInterview(id)
+        if (!response.isSuccessful) throw handleHttpException(retrofit2.HttpException(response))
+        return response.body()?.applicationId
+    }
+    suspend fun recruiters() = getApi().recruiters()
+    override suspend fun updateRecruiter(id: Int, body: JsonObject) {
+        val response = getApi().updateRecruiter(id, body.toString().toRequestBody("application/json".toMediaType()))
+        check(response.get("saved")?.asBoolean == true) { "Recruiter details were not confirmed. Try syncing again." }
     }
 
     suspend fun checkJob(body: JsonObject) = getApi().checkJob(body.toString().toRequestBody("application/json".toMediaType()))

@@ -86,6 +86,24 @@ class PendingSyncEngine(
                     }
                     updated++
                 }
+                val recruiterRow = dao.getInterviewById(id, owner) ?: error("Interview disappeared during update.")
+                recruiterRow.pendingRecruiterJSON?.let { pending ->
+                    val applicationId = recruiterRow.applicationId ?: run {
+                        authenticate(owner); checkAccount(owner)
+                        val resolved = writes.applicationIdForInterview(serverId)
+                        checkAccount(owner)
+                        require(resolved != null && resolved > 0) { "Couldn’t confirm this application. Your recruiter edits are still saved." }
+                        val latest = dao.getInterviewById(id, owner) ?: error("Interview disappeared during update.")
+                        dao.update(latest.copy(applicationId = resolved))
+                        resolved
+                    }
+                    checkAccount(owner); authenticate(owner); checkAccount(owner)
+                    writes.updateRecruiter(applicationId, JsonParser.parseString(pending).asJsonObject)
+                    checkAccount(owner)
+                    val latest = dao.getInterviewById(id, owner) ?: error("Interview disappeared during update.")
+                    if (latest.localRevision == recruiterRow.localRevision) dao.update(latest.copy(pendingRecruiterJSON = null, syncIssue = null))
+                    if (row.pendingChanges == null) updated++
+                }
                 attempted[id] = Result.success(serverId)
                 return serverId
             } catch (cancelled: CancellationException) {

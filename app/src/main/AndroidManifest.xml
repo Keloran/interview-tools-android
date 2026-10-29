@@ -32,6 +32,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name="tools.interviews.android.RecruitersActivity" android:exported="false" />
+
         <activity android:name="tools.interviews.android.JobCheckActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

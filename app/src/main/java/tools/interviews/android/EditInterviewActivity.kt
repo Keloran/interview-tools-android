@@ -48,6 +48,7 @@ import tools.interviews.android.R
 
 class EditInterviewActivity : AppCompatActivity() {
 
+    private lateinit var recruiterForm: RecruiterForm
     private lateinit var toolbar: MaterialToolbar
     private lateinit var buttonSave: MaterialButton
     private lateinit var dropdownStage: AutoCompleteTextView
@@ -114,6 +115,7 @@ class EditInterviewActivity : AppCompatActivity() {
         }
 
         setupViews()
+        recruiterForm = RecruiterForm(this)
         setupToolbar()
         loadData()
     }
@@ -177,6 +179,7 @@ class EditInterviewActivity : AppCompatActivity() {
     }
 
     private fun populateForm(interview: Interview) {
+        recruiterForm.bind(interview.recruiterContactJSON)
         selectedStage = interview.stage
         selectedMethod = interview.method
         selectedStageId = interview.serverStageId
@@ -433,6 +436,7 @@ class EditInterviewActivity : AppCompatActivity() {
     }
 
     private fun saveInterview() {
+        val recruiterJson = try { recruiterForm.json() } catch (error: IllegalArgumentException) { recruiterForm.showError(error); return }
         val isTechnicalTest = selectedStage == InterviewStage.TECHNICAL_TEST
 
         val interviewDate = selectedDateTime
@@ -454,6 +458,7 @@ class EditInterviewActivity : AppCompatActivity() {
         val jobListing = editJobListing.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
 
         val updatedInterview = original.copy(
+            recruiterContactJSON = recruiterJson,
             clientCompany = editClientCompany.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = editCompanyName.text.toString().trim(),

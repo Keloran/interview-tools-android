@@ -12,6 +12,7 @@ object InterviewChanges {
         jobTitle = changed(before.jobTitle, edited.jobTitle, current.jobTitle),
         companyName = changed(before.companyName, edited.companyName, current.companyName),
         companyId = changed(before.companyId, edited.companyId, current.companyId),
+        recruiterContactJSON = changed(before.recruiterContactJSON, edited.recruiterContactJSON, current.recruiterContactJSON),
         clientCompany = changed(before.clientCompany, edited.clientCompany, current.clientCompany),
         stage = changed(before.stage, edited.stage, current.stage),
         serverStageId = changed(before.serverStageId, edited.serverStageId, current.serverStageId),
