@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name="tools.interviews.android.InterviewApplication"
@@ -32,6 +33,9 @@
             </intent-filter>
         </activity>
 
+        <activity android:name="tools.interviews.android.StageReflectionActivity" android:exported="false" />
+        <activity android:name="tools.interviews.android.InterviewBankActivity" android:exported="false" />
+        <activity android:name="tools.interviews.android.StoryEditorActivity" android:exported="false" />
         <activity android:name="tools.interviews.android.RecruitersActivity" android:exported="false" />
 
         <activity android:name="tools.interviews.android.JobCheckActivity" android:exported="true">

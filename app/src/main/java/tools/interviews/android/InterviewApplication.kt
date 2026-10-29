@@ -24,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import tools.interviews.android.data.InterviewDatabase
 import tools.interviews.android.data.InterviewRepository
 import tools.interviews.android.data.api.SyncService
@@ -70,6 +72,20 @@ class InterviewApplication : Application() {
             { APIService.getInstance().setAuthToken(null) }, File(cacheDir, "account-exports"))
     }
 
+    val storySaver by lazy { tools.interviews.android.data.api.StorySaveService(database.toolDraftDao(),accountGate,
+        APIService.getInstance(),::ownerNow,{ authenticateAccount(it) }) }
+    fun refreshDebriefReminders() {
+        applicationScope.launch {
+            accountGate.run {
+                val expected=ownerNow()
+                val rows=database.interviewDao().getAllInterviews(expected).first()
+                if(ownerNow()==expected) tools.interviews.android.reminders.DebriefReminders.schedule(this@InterviewApplication,rows)
+            }
+        }
+    }
+    val toolDrafts by lazy { tools.interviews.android.data.ToolDraftStore(database.toolDraftDao(), accountGate, ::ownerNow) }
+    val reflectionStore by lazy { tools.interviews.android.data.api.ReflectionStore(database.interviewDao(), accountGate,
+        APIService.getInstance(), ::ownerNow, { authenticateAccount(it) }) }
     val authenticatedRequests by lazy {
         tools.interviews.android.data.account.AuthenticatedRequests(accountGate, ::ownerNow, { authenticateAccount(it) })
     }
@@ -105,6 +121,13 @@ class InterviewApplication : Application() {
             Clerk.userFlow.collect { user ->
                 sessionController.changed(Clerk.user?.id)
             }
+        }
+
+        applicationScope.launch {
+            owner.drop(1).collect { tools.interviews.android.reminders.DebriefReminders.cancel(this@InterviewApplication) }
+        }
+        applicationScope.launch {
+            repository.allInterviews.collect { rows -> tools.interviews.android.reminders.DebriefReminders.schedule(this@InterviewApplication,rows) }
         }
 
         applicationScope.launch(Dispatchers.IO) {

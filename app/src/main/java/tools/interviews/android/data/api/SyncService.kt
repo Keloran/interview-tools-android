@@ -167,7 +167,7 @@ class SyncService(
             val existing = interviewDao.getInterviewByServerId(apiInterview.id, ownerId) ?: interviewDao.getLegacyByServerId(apiInterview.id)
 
             // Never replace an unacknowledged local edit with a downloaded snapshot.
-            if (existing?.pendingChanges != null || existing?.pendingRecruiterJSON != null) continue
+            if (existing?.pendingChanges != null || existing?.pendingRecruiterJSON != null || existing?.pendingPrepJSON != null) continue
 
             // Find or create the company for this interview
             val company = findOrCreateCompany(apiInterview.company, ownerId)
@@ -183,7 +183,8 @@ class SyncService(
                 )
                 interviewDao.update(updatedInterview.copy(clientMutationId = existing.clientMutationId,
                     localRevision = existing.localRevision, previousLocalId = existing.previousLocalId,
-                    recruiterContactJSON = updatedInterview.recruiterContactJSON ?: existing.recruiterContactJSON))
+                    recruiterContactJSON = updatedInterview.recruiterContactJSON ?: existing.recruiterContactJSON,
+                    prepJSON = existing.prepJSON, debriefPromptedFor = existing.debriefPromptedFor))
                 Log.d(TAG, "Updated local interview: ${updatedInterview.jobTitle}")
             } else {
                 // Insert new interview from server
@@ -204,7 +205,7 @@ class SyncService(
         // (Only delete those that have a serverId - local-only interviews are preserved)
         for (deletedServerId in snapshot.deletedIds) {
             val local = interviewDao.getInterviewByServerId(deletedServerId, ownerId)
-            if (local?.pendingChanges != null || local?.pendingRecruiterJSON != null) {
+            if (local?.pendingChanges != null || local?.pendingRecruiterJSON != null || local?.pendingPrepJSON != null) {
                 interviewDao.update(local.copy(syncIssue = "This interview was removed remotely. Your local changes are still saved."))
             } else interviewDao.deleteByServerId(deletedServerId, ownerId)
             Log.d(TAG, "Deleted interview with serverId: $deletedServerId (removed from server)")
@@ -303,6 +304,8 @@ class SyncService(
             parentId = apiInterview.parentId,
             durationMinutes = apiInterview.durationMinutes,
             recruiterContactJSON = RecruiterContact.fromApi(apiInterview),
+            debriefJSON = StageReflection.debriefFromApi(apiInterview),
+            feedbackJSON = StageReflection.feedbackFromApi(apiInterview), debriefedAt = apiInterview.debriefedAt,
             serverStageId = apiInterview.stage?.id,
             serverMethodId = apiInterview.stageMethod?.id,
             serverMethodName = apiInterview.stageMethod?.method,

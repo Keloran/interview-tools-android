@@ -12,6 +12,10 @@ object InterviewChanges {
         jobTitle = changed(before.jobTitle, edited.jobTitle, current.jobTitle),
         companyName = changed(before.companyName, edited.companyName, current.companyName),
         companyId = changed(before.companyId, edited.companyId, current.companyId),
+        debriefJSON = changed(before.debriefJSON, edited.debriefJSON, current.debriefJSON),
+        feedbackJSON = changed(before.feedbackJSON, edited.feedbackJSON, current.feedbackJSON),
+        prepJSON = changed(before.prepJSON, edited.prepJSON, current.prepJSON),
+        debriefedAt = changed(before.debriefedAt, edited.debriefedAt, current.debriefedAt),
         recruiterContactJSON = changed(before.recruiterContactJSON, edited.recruiterContactJSON, current.recruiterContactJSON),
         clientCompany = changed(before.clientCompany, edited.clientCompany, current.clientCompany),
         stage = changed(before.stage, edited.stage, current.stage),
@@ -47,6 +51,8 @@ object InterviewChanges {
         return combined.takeIf { it.size() > 0 }?.toString()
     }
     fun afterCreate(row: Interview): JsonObject = JsonObject().apply {
+        row.debriefJSON?.let { add("debrief", JsonParser.parseString(it)) }
+        row.feedbackJSON?.let { add("feedback", JsonParser.parseString(it)) }
         val initial = when (row.stage) {
             InterviewStage.APPLIED -> InterviewOutcome.AWAITING_RESPONSE
             InterviewStage.OFFER -> InterviewOutcome.OFFER_RECEIVED
@@ -79,6 +85,8 @@ object InterviewChanges {
     }
 
     fun diff(before: Interview, after: Interview): JsonObject = JsonObject().apply {
+        if (before.debriefJSON != after.debriefJSON && after.debriefJSON != null) add("debrief", JsonParser.parseString(after.debriefJSON))
+        if (before.feedbackJSON != after.feedbackJSON && after.feedbackJSON != null) add("feedback", JsonParser.parseString(after.feedbackJSON))
         fun nullable(key: String, value: String?) { if (value == null) add(key, JsonNull.INSTANCE) else addProperty(key, value) }
         if (before.jobTitle != after.jobTitle) addProperty("jobTitle", after.jobTitle)
         if (before.companyName != after.companyName) addProperty("companyName", after.companyName)

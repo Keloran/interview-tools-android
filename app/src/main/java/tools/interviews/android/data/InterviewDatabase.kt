@@ -11,14 +11,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import tools.interviews.android.model.Company
 import tools.interviews.android.model.Interview
 
-@Database(entities = [Interview::class, Company::class, ApplicationTimelineCache::class], version = InterviewDatabase.VERSION, exportSchema = false)
+@Database(entities = [Interview::class, Company::class, ApplicationTimelineCache::class, ToolDraft::class], version = InterviewDatabase.VERSION, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class InterviewDatabase : RoomDatabase() {
     abstract fun interviewDao(): InterviewDao
     abstract fun companyDao(): CompanyDao
+    abstract fun toolDraftDao(): ToolDraftDao
     abstract fun applicationTimelineDao(): ApplicationTimelineDao
 
     suspend fun clearAccountCache(ownerId: String, clearGuests: Boolean) = withTransaction {
+        toolDraftDao().deleteOwner(ownerId)
+        if (clearGuests) toolDraftDao().deleteOwner("guest")
         applicationTimelineDao().deleteOwner(ownerId)
         interviewDao().deleteOwner(ownerId)
         interviewDao().deleteSynced("legacy") // unclaimed old server cache must not retain deleted account data
@@ -29,7 +32,7 @@ abstract class InterviewDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION = 12
+        const val VERSION = 13
         @Volatile
         private var INSTANCE: InterviewDatabase? = null
 
@@ -234,7 +237,14 @@ abstract class InterviewDatabase : RoomDatabase() {
             }
         }
 
-        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (name in listOf("debriefJSON", "feedbackJSON", "prepJSON", "pendingPrepJSON", "debriefedAt", "debriefPromptedFor")) db.execSQL("ALTER TABLE interviews ADD COLUMN $name TEXT")
+                db.execSQL("CREATE TABLE IF NOT EXISTS tool_drafts (ownerId TEXT NOT NULL, draftKey TEXT NOT NULL, json TEXT NOT NULL, PRIMARY KEY(ownerId, draftKey))")
+            }
+        }
+
+        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
 
         fun getDatabase(context: Context): InterviewDatabase {
             return INSTANCE ?: synchronized(this) {

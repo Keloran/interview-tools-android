@@ -87,6 +87,26 @@ class NativeWriteApiTest {
         val api = APIService.forTesting("https://example.test/api/", factory)
         assertTrue(runCatching { api.updateRecruiter(77, JsonParser.parseString(RecruiterContact(true,"Sam").json()).asJsonObject) }.isFailure)
     }
+    @Test fun `debrief feedback and preparation send explicit nested clears`() = runTest {
+        val api=APIService.forTesting("https://example.test/api/",factory)
+        api.patchInterview(10,JsonParser.parseString("{\"debrief\":{\"rating\":null,\"questionsAsked\":null},\"feedback\":{\"type\":null,\"text\":null}}").asJsonObject)
+        val patch=JsonParser.parseString(Buffer().also { requests.last().body!!.writeTo(it) }.readUtf8()).asJsonObject
+        assertTrue(patch.getAsJsonObject("debrief").get("rating").isJsonNull)
+        assertTrue(patch.getAsJsonObject("feedback").get("type").isJsonNull)
+        responseBody="{\"notes\":\"\",\"storyIds\":[]}"
+        api.updatePrep(10,JsonParser.parseString(StageReflection.prep("",emptyList())).asJsonObject)
+        assertEquals("/api/interview/10/prep",requests.last().url.encodedPath)
+        assertEquals("PUT",requests.last().method)
+    }
+    @Test fun `story creates use the retry safe route and never fall back`() = runTest {
+        val api=APIService.forTesting("https://example.test/api/",factory)
+        val body=StoryFields.body(mapOf("title" to "Example"),"").apply { addProperty("clientMutationId","11111111-1111-4111-8111-111111111111") }
+        status=404
+        assertTrue(runCatching { api.createStory(body) }.isFailure)
+        assertEquals(listOf("/api/native/stories"),requests.map { it.url.encodedPath })
+        val sent=JsonParser.parseString(Buffer().also { requests.single().body!!.writeTo(it) }.readUtf8()).asJsonObject
+        assertEquals(body.get("clientMutationId"),sent.get("clientMutationId"))
+    }
     @Test fun `older servers never receive a fallback create at the unsafe legacy URL`() = runTest {
         status = 404
         val api = APIService.forTesting("https://example.test/api/", factory)

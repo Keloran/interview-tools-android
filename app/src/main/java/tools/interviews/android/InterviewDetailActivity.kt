@@ -74,6 +74,10 @@ class InterviewDetailActivity : AppCompatActivity() {
     private val dateFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy 'at' h:mm a")
 
+    private val reminderPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if(granted) (application as InterviewApplication).refreshDebriefReminders()
+        else Snackbar.make(toolbar,"Notifications are off. You can still record debriefs from this screen.",Snackbar.LENGTH_LONG).show()
+    }
     private val nextStageLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { /* Interview saved in AddInterviewActivity, will reload on resume */ }
@@ -147,10 +151,22 @@ class InterviewDetailActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
+        toolbar.menu.add("Debrief and preparation").setOnMenuItemClickListener {
+            startActivity(Intent(this,StageReflectionActivity::class.java).putExtra(StageReflectionActivity.EXTRA_INTERVIEW_ID,interviewId).putExtra("expected_owner",interview?.ownerId));true
+        }
         toolbar.setNavigationOnClickListener {
             finish()
         }
 
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.buttonEnableDebriefReminders).setOnClickListener {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("Debrief reminders")
+                .setMessage("Get a reminder after scheduled interviews to record how they went.")
+                .setNegativeButton("Cancel",null).setPositiveButton("Enable") { _,_->
+                    if(android.os.Build.VERSION.SDK_INT>=33 && androidx.core.content.ContextCompat.checkSelfPermission(this,android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)
+                        reminderPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    else (application as InterviewApplication).refreshDebriefReminders()
+                }.show()
+        }
         buttonEdit.setOnClickListener {
             interview?.let { editInterview(it) }
         }
@@ -178,6 +194,7 @@ class InterviewDetailActivity : AppCompatActivity() {
     }
 
     private fun displayInterview(interview: Interview) {
+        findViewById<android.view.View>(R.id.buttonEnableDebriefReminders).isVisible=interview.hasMeeting && interview.interviewInstant!=null && interview.debriefedAt==null
         timelinePanel.bind(interview)
         // Basic info
         textJobTitle.text = interview.jobTitle

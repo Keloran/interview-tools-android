@@ -82,7 +82,9 @@ class InterviewRepository(
                 }
             }
             interviewDao.update(patched.copy(pendingChanges = InterviewChanges.merge(current.pendingChanges, changes),
-                pendingRecruiterJSON = recruiterPatch, localRevision = current.localRevision + 1, syncIssue = null))
+                pendingRecruiterJSON = recruiterPatch,
+                pendingPrepJSON = if (current.prepJSON != patched.prepJSON) patched.prepJSON else current.pendingPrepJSON,
+                localRevision = current.localRevision + 1, syncIssue = null))
         }
     }
 
