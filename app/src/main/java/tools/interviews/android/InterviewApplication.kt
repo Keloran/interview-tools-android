@@ -70,6 +70,9 @@ class InterviewApplication : Application() {
             { APIService.getInstance().setAuthToken(null) }, File(cacheDir, "account-exports"))
     }
 
+    val authenticatedRequests by lazy {
+        tools.interviews.android.data.account.AuthenticatedRequests(accountGate, ::ownerNow, { authenticateAccount(it) })
+    }
     val applicationHistory by lazy {
         tools.interviews.android.data.api.ApplicationHistory(database.applicationTimelineDao(), APIService.getInstance(),
             accountGate, ::ownerNow, { authenticateAccount(it) })

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+ android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:fitsSystemWindows="true">
+ <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="?attr/actionBarSize" app:title="Have I applied?" app:navigationIcon="@drawable/ic_arrow_back"/>
+ <androidx.core.widget.NestedScrollView android:layout_width="match_parent" android:layout_height="match_parent">
+ <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Check your own application history by company, end client or job URL. Add a title to highlight matching roles. Paste listing text for warnings; a URL alone does not include the listing content." android:textAppearance="?attr/textAppearanceBodyMedium"/>
+ <com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+ android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Company or agency">
+ <com.google.android.material.textfield.TextInputEditText android:id="@+id/editCheckCompany" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textCapWords" android:maxLength="300"/>
+ </com.google.android.material.textfield.TextInputLayout><com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+ android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="End client / actual employer (optional)">
+ <com.google.android.material.textfield.TextInputEditText android:id="@+id/editCheckClient" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textCapWords" android:maxLength="300"/>
+ </com.google.android.material.textfield.TextInputLayout><com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+ android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Job title (optional)">
+ <com.google.android.material.textfield.TextInputEditText android:id="@+id/editCheckTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textCapWords" android:maxLength="300"/>
+ </com.google.android.material.textfield.TextInputLayout><com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+ android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Job listing URL (optional)">
+ <com.google.android.material.textfield.TextInputEditText android:id="@+id/editCheckLink" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textUri" android:maxLength="2000"/>
+ </com.google.android.material.textfield.TextInputLayout><com.google.android.material.textfield.TextInputLayout style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+ android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Listing text (optional)">
+ <com.google.android.material.textfield.TextInputEditText android:id="@+id/editCheckDescription" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textMultiLine" android:maxLength="100000"/>
+ </com.google.android.material.textfield.TextInputLayout>
+ <com.google.android.material.button.MaterialButton android:id="@+id/buttonCheckJob" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Check my history" android:layout_marginTop="16dp"/>
+ <TextView android:id="@+id/textCheckStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:accessibilityLiveRegion="polite" android:textAppearance="?attr/textAppearanceBodyMedium"/>
+ <com.google.android.material.button.MaterialButton android:id="@+id/buttonAddCheckedJob" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Add application"/>
+ <LinearLayout android:id="@+id/checkResults" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/>
+ </LinearLayout></androidx.core.widget.NestedScrollView></LinearLayout>

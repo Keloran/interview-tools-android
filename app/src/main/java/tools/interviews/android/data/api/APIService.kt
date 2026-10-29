@@ -23,6 +23,9 @@ interface InterviewsAPI {
     @PUT("applications/{id}/first-response")
     suspend fun saveFirstReply(@Path("id") id: Int, @Body body: okhttp3.RequestBody): JsonObject
 
+    @POST("check")
+    suspend fun checkJob(@Body body: okhttp3.RequestBody): JsonObject
+
     // Companies
     @GET("companies")
     suspend fun fetchCompanies(): List<APICompany>
@@ -156,6 +159,8 @@ class APIService private constructor(private val baseUrl: String = BASE_URL, pri
             }
         }
     }
+
+    suspend fun checkJob(body: JsonObject) = getApi().checkJob(body.toString().toRequestBody("application/json".toMediaType()))
 
     override suspend fun timeline(id: Int) = getApi().applicationTimeline(id)
     override suspend fun firstReply(id: Int, body: JsonObject) = getApi().saveFirstReply(id,

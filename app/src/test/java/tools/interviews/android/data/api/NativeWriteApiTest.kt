@@ -57,6 +57,16 @@ class NativeWriteApiTest {
         val body = JsonParser.parseString(Buffer().also { requests.last().body!!.writeTo(it) }.readUtf8()).asJsonObject
         assertTrue(body.get("firstResponseAt").isJsonNull)
     }
+    @Test fun `job checks post editable listing fields to the shared API`() = runTest {
+        val api = APIService.forTesting("https://example.test/api/", factory)
+        api.checkJob(JobCheckInput("https://jobs.example.com/123", "Engineer", "Agency", "Employer", "Listing text").json())
+        val sent = requests.single()
+        assertEquals("POST", sent.method)
+        assertEquals("/api/check", sent.url.encodedPath)
+        val body = JsonParser.parseString(Buffer().also { sent.body!!.writeTo(it) }.readUtf8()).asJsonObject
+        assertEquals("Employer", body.get("client").asString)
+        assertEquals("Listing text", body.get("description").asString)
+    }
     @Test fun `older servers never receive a fallback create at the unsafe legacy URL`() = runTest {
         status = 404
         val api = APIService.forTesting("https://example.test/api/", factory)

@@ -266,6 +266,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
+        toolbar.menu.add("Have I applied?").setOnMenuItemClickListener {
+            startActivity(Intent(this, JobCheckActivity::class.java)); true
+        }
         buttonSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
