@@ -77,6 +77,12 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # Release notes for "What's new": one file per language, max 500 characters each
+      - name: Checkout Release Notes
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: distribution/whatsnew
+
       - name: Download AAB Artifact
         uses: actions/download-artifact@v8.0.2
         with:
@@ -112,6 +118,7 @@ jobs:
           track: ${{ needs.build.outputs.deploy_track }}
           status: completed
           mappingFile: ./mapping/mapping.txt
+          whatsNewDirectory: distribution/whatsnew
 
       - name: Upload to Play Store (without mapping)
         if: steps.check_mapping.outputs.exists == 'false'
@@ -122,3 +129,4 @@ jobs:
           releaseFiles: ./release/app-release.aab
           track: ${{ needs.build.outputs.deploy_track }}
           status: completed
+          whatsNewDirectory: distribution/whatsnew
