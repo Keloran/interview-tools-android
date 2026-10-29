@@ -1,7 +1,7 @@
 package tools.interviews.android.data
 
 import android.content.Intent
-import android_app.R
+import tools.interviews.android.R
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
