@@ -1,5 +1,7 @@
 package tools.interviews.android.calendar
 
+import tools.interviews.android.model.displayInterviewDate
+import tools.interviews.android.model.displayDeadline
 import tools.interviews.android.model.Interview
 import tools.interviews.android.model.InterviewOutcome
 import java.time.LocalDate
@@ -37,8 +39,8 @@ object InterviewPipCalculator {
             // Add all relevant dates for this interview
             dates.add(interview.applicationDate)
 
-            interview.deadline?.toLocalDate()?.let { dates.add(it) }
-            interview.interviewDate?.toLocalDate()?.let { dates.add(it) }
+            interview.displayDeadline?.toLocalDate()?.let { dates.add(it) }
+            interview.displayInterviewDate?.toLocalDate()?.let { dates.add(it) }
 
             // Add outcome to each date (avoiding duplicates for same date)
             dates.distinct().forEach { date ->

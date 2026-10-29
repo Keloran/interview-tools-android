@@ -12,7 +12,7 @@ import tools.interviews.android.model.Interview
 
 @Dao
 interface InterviewDao {
-    @Query("SELECT * FROM interviews WHERE ownerId = :ownerId ORDER BY COALESCE(interviewDate, deadline, applicationDate) DESC")
+    @Query("SELECT * FROM interviews WHERE ownerId = :ownerId ORDER BY COALESCE(interviewInstant, deadlineInstant, offerRespondBy, interviewDate, deadline, applicationDate) DESC")
     fun getAllInterviews(ownerId: String = AccountOwners.GUEST): Flow<List<Interview>>
 
     @Query("SELECT * FROM interviews WHERE id = :id AND ownerId = :ownerId")

@@ -39,6 +39,38 @@ class SyncReconciliationTest {
             if (failCommit) throw IOException("commit failed")
         } })
 
+    @Test fun downloadedMeetingRetainsItsInstantInRoom() = runBlocking {
+        val remote = object : SyncRemote {
+            override fun checkSession() {}
+            override suspend fun companies() = listOf(APICompany(10, "Example"))
+            override suspend fun interviews(take: Int, skip: Int) = listOf(row(1).copy(
+                stage = APIStage(2, "First stage"), date = "2026-06-01T10:00:00.123+01:00"))
+            override suspend fun interview(id: Int): APIInterview? = null
+        }
+        val sync = service(remote)
+        sync.syncAll()
+        assertNull(sync.syncError.value)
+        val downloaded = db.interviewDao().getInterviewByServerId(1, account)!!
+        assertEquals(java.time.Instant.parse("2026-06-01T09:00:00.123Z"), downloaded.interviewInstant)
+        assertNull(downloaded.interviewDate)
+    }
+    @Test fun offerDatesRemainCalendarDaysWithoutBecomingMeetings() = runBlocking {
+        val remote = object : SyncRemote {
+            override fun checkSession() {}
+            override suspend fun companies() = listOf(APICompany(10, "Example"))
+            override suspend fun interviews(take: Int, skip: Int) = listOf(row(1).copy(
+                stage = APIStage(3, "Offer"), date = "2026-06-01T00:00:00Z", deadline = "2026-06-01T00:00:00Z"))
+            override suspend fun interview(id: Int): APIInterview? = null
+        }
+        val sync = service(remote)
+        sync.syncAll()
+        assertNull(sync.syncError.value)
+        val downloaded = db.interviewDao().getInterviewByServerId(1, account)!!
+        assertEquals(LocalDate.of(2026, 6, 1), downloaded.offerRespondBy)
+        assertNull(downloaded.interviewInstant)
+        assertNull(downloaded.interviewDate)
+    }
+
     @Test fun verified404RemovesOnlyTheMissingRecordAfterAllPagesSucceed() = runBlocking {
         seed()
         val service = service(Remote())

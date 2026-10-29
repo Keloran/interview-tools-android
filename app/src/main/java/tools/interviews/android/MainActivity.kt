@@ -1,5 +1,7 @@
 package tools.interviews.android
 
+import tools.interviews.android.model.displayInterviewDate
+import tools.interviews.android.model.displayDeadline
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -56,7 +58,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import android_app.R
+import tools.interviews.android.R
 
 class MainActivity : AppCompatActivity() {
 
@@ -618,14 +620,14 @@ class MainActivity : AppCompatActivity() {
                 allInterviews.filter { interview ->
                     interview.companyName.contains(companyFilter!!, ignoreCase = true)
                 }.sortedByDescending {
-                    it.interviewDate ?: it.deadline ?: it.applicationDate.atStartOfDay()
+                    it.displayInterviewDate ?: it.displayDeadline ?: it.applicationDate.atStartOfDay()
                 }
             }
             // Date filter
             selectedDate != null -> {
                 allInterviews.filter { interview ->
-                    val relevantDate = interview.interviewDate?.toLocalDate()
-                        ?: interview.deadline?.toLocalDate()
+                    val relevantDate = interview.displayInterviewDate?.toLocalDate()
+                        ?: interview.displayDeadline?.toLocalDate()
                         ?: interview.applicationDate
                     relevantDate == selectedDate
                 }
@@ -634,12 +636,12 @@ class MainActivity : AppCompatActivity() {
             else -> {
                 val today = LocalDate.now()
                 allInterviews.filter { interview ->
-                    val relevantDate = interview.interviewDate?.toLocalDate()
-                        ?: interview.deadline?.toLocalDate()
+                    val relevantDate = interview.displayInterviewDate?.toLocalDate()
+                        ?: interview.displayDeadline?.toLocalDate()
                         ?: interview.applicationDate
                     !relevantDate.isBefore(today)
                 }.sortedBy {
-                    it.interviewDate ?: it.deadline ?: it.applicationDate.atStartOfDay()
+                    it.displayInterviewDate ?: it.displayDeadline ?: it.applicationDate.atStartOfDay()
                 }
             }
         }

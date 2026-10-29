@@ -8,3 +8,12 @@ updates:
       include: scope
     schedule:
       interval: daily
+    groups:
+      clerk:
+        patterns: ["com.clerk:*"]
+      kotlin:
+        patterns: ["org.jetbrains.kotlin*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

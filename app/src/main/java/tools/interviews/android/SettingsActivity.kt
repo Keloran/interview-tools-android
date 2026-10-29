@@ -39,7 +39,7 @@ import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.util.FoldableOrientationManager
 import java.time.format.DateTimeFormatter
 import androidx.core.net.toUri
-import android_app.R
+import tools.interviews.android.R
 
 class SettingsActivity : AppCompatActivity() {
 

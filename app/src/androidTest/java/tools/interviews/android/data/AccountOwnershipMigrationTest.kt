@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 import tools.interviews.android.data.account.AccountOwners
 import tools.interviews.android.model.Company
 import tools.interviews.android.model.Interview
-import tools.interviews.android.model.InterviewStage
+import tools.interviews.android.model.*
 import java.time.LocalDate
 import java.util.UUID
 
@@ -46,6 +46,26 @@ class AccountOwnershipMigrationTest {
     @After fun close() {
         database.close()
         context.deleteDatabase(name)
+    }
+
+    @Test fun oldWallClockTimesRemainRecoverableWithoutAnInventedOffset() = runBlocking {
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use {
+            it.execSQL("UPDATE interviews SET stage = 'FIRST_STAGE', interviewDate = '2026-06-01T09:00' WHERE id = 1")
+        }
+        val old = database.interviewDao().getLegacyByServerId(100)!!
+        assertEquals(java.time.LocalDateTime.of(2026, 6, 1, 9, 0), old.interviewDate)
+        assertNull(old.interviewInstant)
+        assertTrue(old.needsTimeConfirmation)
+        assertTrue(runCatching { old.meetingWireValue() }.isFailure)
+    }
+    @Test fun oldOfferDeadlineMigratesAsACalendarDay() = runBlocking {
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use {
+            it.execSQL("UPDATE interviews SET stage = 'OFFER', deadline = '2026-06-01T23:59' WHERE id = 1")
+        }
+        val old = database.interviewDao().getLegacyByServerId(100)!!
+        assertEquals(LocalDate.of(2026, 6, 1), old.offerRespondBy)
+        assertNull(old.displayInterviewDate)
+        assertEquals("2026-06-01T00:00:00Z", old.deadlineWireValue())
     }
 
     @Test fun upgradePreservesRowsWithoutGuessingTheirOwner() = runBlocking {

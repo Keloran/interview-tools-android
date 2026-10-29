@@ -12,14 +12,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import tools.interviews.android.data.CompanyDao
 import tools.interviews.android.data.InterviewDao
 import tools.interviews.android.model.Company
-import tools.interviews.android.model.Interview
+import tools.interviews.android.model.*
 import tools.interviews.android.model.InterviewMethod
 import tools.interviews.android.model.InterviewOutcome
 import tools.interviews.android.model.InterviewStage
-import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 import com.google.gson.Gson
 
 class SyncService(
@@ -271,8 +268,8 @@ class SyncService(
             clientCompany = interview.clientCompany,
             jobTitle = interview.jobTitle,
             jobPostingLink = interview.jobListing ?: extractJobListing(interview.metadataJSON),
-            date = interview.interviewDate?.format(DateTimeFormatter.ISO_DATE_TIME),
-            deadline = interview.deadline?.format(DateTimeFormatter.ISO_DATE_TIME),
+            date = interview.meetingWireValue(),
+            deadline = interview.deadlineWireValue(),
             interviewer = interview.interviewer,
             locationType = when (interview.method) {
                 InterviewMethod.VIDEO_CALL -> "link"
@@ -281,7 +278,8 @@ class SyncService(
                 null -> null
             },
             interviewLink = interview.link,
-            notes = interview.notes
+            notes = interview.notes,
+            offerDeadline = if (interview.stage == InterviewStage.OFFER) interview.offerRespondBy?.toString() else null
         )
 
         return apiService.createInterview(request)
@@ -293,8 +291,8 @@ class SyncService(
         val request = UpdateInterviewRequest(
             outcome = interview.outcome.name,  // Server expects uppercase: REJECTED, AWAITING_RESPONSE, etc.
             stage = interview.stage.displayName,
-            date = interview.interviewDate?.format(DateTimeFormatter.ISO_DATE_TIME),
-            deadline = interview.deadline?.format(DateTimeFormatter.ISO_DATE_TIME),
+            date = interview.meetingWireValue(),
+            deadline = interview.deadlineWireValue(),
             interviewer = interview.interviewer,
             notes = interview.notes,
             link = interview.link
@@ -312,17 +310,18 @@ class SyncService(
         ownerId: String = AccountOwners.GUEST
     ): Interview {
         // Parse application date
-        val applicationDate = parseDate(apiInterview.applicationDate) ?: LocalDate.now()
+        val applicationDate = requireNotNull(InterviewTimes.parseDay(apiInterview.applicationDate)) { "Missing application date" }
 
         // Parse interview date
-        val interviewDate = apiInterview.date?.let { parseDateTime(it) }
+        val stage = mapApiStageToLocal(apiInterview.stage?.stage)
+        val hasMeeting = stage !in setOf(InterviewStage.APPLIED, InterviewStage.OFFER, InterviewStage.TECHNICAL_TEST)
+        val interviewInstant = if (hasMeeting) InterviewTimes.parseInstant(apiInterview.date) else null
 
         // Parse deadline
-        val deadline = apiInterview.deadline?.let { parseDateTime(it) }
+        val deadlineInstant = if (stage == InterviewStage.TECHNICAL_TEST) InterviewTimes.parseInstant(apiInterview.deadline) else null
+        val offerRespondBy = if (stage == InterviewStage.OFFER) InterviewTimes.parseDay(apiInterview.deadline) else null
 
         // Map stage
-        val stage = mapApiStageToLocal(apiInterview.stage?.stage)
-
         // Map method
         val method = mapApiMethodToLocal(apiInterview.stageMethod?.method)
 
@@ -348,8 +347,9 @@ class SyncService(
             method = method,
             outcome = outcome,
             applicationDate = applicationDate,
-            interviewDate = interviewDate,
-            deadline = deadline,
+            interviewInstant = interviewInstant,
+            deadlineInstant = deadlineInstant,
+            offerRespondBy = offerRespondBy,
             interviewer = apiInterview.interviewer,
             link = apiInterview.link,
             jobListing = apiInterview.metadata?.jobListing,
@@ -404,35 +404,6 @@ class SyncService(
             "offer declined", "offer_declined" -> InterviewOutcome.OFFER_DECLINED
             "withdrew", "withdrawn" -> InterviewOutcome.WITHDREW
             else -> InterviewOutcome.SCHEDULED
-        }
-    }
-
-    private fun parseDate(dateString: String): LocalDate? {
-        return try {
-            // Try ISO date-time format first
-            LocalDateTime.parse(dateString, DateTimeFormatter.ISO_DATE_TIME).toLocalDate()
-        } catch (e: DateTimeParseException) {
-            try {
-                // Try ISO date format
-                LocalDate.parse(dateString, DateTimeFormatter.ISO_DATE)
-            } catch (e2: DateTimeParseException) {
-                Log.w(TAG, "Failed to parse date: $dateString")
-                null
-            }
-        }
-    }
-
-    private fun parseDateTime(dateString: String): LocalDateTime? {
-        return try {
-            LocalDateTime.parse(dateString, DateTimeFormatter.ISO_DATE_TIME)
-        } catch (e: DateTimeParseException) {
-            try {
-                // If it's just a date, convert to start of day
-                LocalDate.parse(dateString, DateTimeFormatter.ISO_DATE).atStartOfDay()
-            } catch (e2: DateTimeParseException) {
-                Log.w(TAG, "Failed to parse datetime: $dateString")
-                null
-            }
         }
     }
 

@@ -1,3 +1,8 @@
+import com.android.build.api.artifact.ScopedArtifact
+import com.android.build.api.variant.ScopedArtifacts
+import tools.interviews.gradle.InferTestKeepRules
+import com.android.tools.r8.tracereferences.TraceReferences
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,19 +11,17 @@ plugins {
 }
 
 android {
-    namespace = "android_app"
+    namespace = "tools.interviews.android"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     signingConfigs {
         create("release") {
-            // Logic: Checks Env vars (GitHub Actions).
-            // If missing, falls back to a dummy "keystore.jks" to prevent sync errors.
-            val keystorePath = System.getenv("KEYSTORE_FILE") ?: "keystore.jks"
+            // Local release verification produces an unsigned APK without production credentials.
+            val keystorePath = System.getenv("KEYSTORE_FILE")
 
-            // Fixed: Kotlin DSL requires '=' for assignments
-            storeFile = file(keystorePath)
+            if (keystorePath != null) storeFile = file(keystorePath)
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS")
             keyPassword = System.getenv("KEY_PASSWORD")
@@ -42,8 +45,10 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+            signingConfig = if (providers.gradleProperty("verifyRelease").orNull == "true") signingConfigs.getByName("debug")
+                else signingConfigs.getByName("release").takeIf { it.storeFile != null }
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -61,6 +66,8 @@ android {
             freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
         }
     }
+    testBuildType = providers.gradleProperty("instrumentedBuildType").orElse("debug").get()
+
     buildFeatures {
         buildConfig = true
         compose = true
@@ -122,4 +129,22 @@ dependencies {
 
     // Flags
     implementation(libs.flags)
+}
+// AGP does not include androidTest references while shrinking the target APK.
+// Infer those entry points with the R8 tool bundled with this AGP version.
+if (providers.gradleProperty("verifyRelease").orNull == "true") {
+    androidComponents.onVariants(androidComponents.selector().withBuildType("release")) { variant ->
+        variant.androidTest?.let { tests ->
+            val rules = tasks.register<InferTestKeepRules>("inferReleaseTestKeepRules") {
+                tracerClasspath.from(files(TraceReferences::class.java.protectionDomain.codeSource.location))
+                bootClasspath.from(androidComponents.sdkComponents.bootClasspath)
+                outputFile.set(layout.buildDirectory.file("generated/test-entrypoints/release.pro"))
+            }
+            variant.artifacts.forScope(ScopedArtifacts.Scope.ALL).use(rules).toGet(
+                ScopedArtifact.CLASSES, InferTestKeepRules::getApplicationJars, InferTestKeepRules::getApplicationDirectories)
+            tests.artifacts.forScope(ScopedArtifacts.Scope.ALL).use(rules).toGet(
+                ScopedArtifact.CLASSES, InferTestKeepRules::getTestJars, InferTestKeepRules::getTestDirectories)
+            variant.proguardFiles.add(rules.flatMap { it.outputFile })
+        }
+    }
 }
