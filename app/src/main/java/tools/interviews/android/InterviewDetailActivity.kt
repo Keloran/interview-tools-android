@@ -32,6 +32,7 @@ import tools.interviews.android.R
 
 class InterviewDetailActivity : AppCompatActivity() {
 
+    private lateinit var timelinePanel: ApplicationTimelinePanel
     private lateinit var toolbar: MaterialToolbar
     private lateinit var buttonEdit: ImageButton
     private lateinit var buttonForward: ImageButton
@@ -100,6 +101,7 @@ class InterviewDetailActivity : AppCompatActivity() {
             return
         }
 
+        timelinePanel = ApplicationTimelinePanel(this)
         setupViews()
         setupToolbar()
         loadInterview()
@@ -176,9 +178,12 @@ class InterviewDetailActivity : AppCompatActivity() {
     }
 
     private fun displayInterview(interview: Interview) {
+        timelinePanel.bind(interview)
         // Basic info
         textJobTitle.text = interview.jobTitle
         textCompanyName.text = interview.companyName
+        val clientCompany = interview.clientCompany
+        if (!clientCompany.isNullOrBlank()) textCompanyName.append(" · Client: " + clientCompany)
         textSyncStatus.isVisible = interview.syncLabel != null
         textSyncStatus.text = interview.syncIssue ?: interview.syncLabel
 
@@ -221,7 +226,7 @@ class InterviewDetailActivity : AppCompatActivity() {
             labelDateTime.text = "Interview Date & Time"
             labelDateTime.isVisible = true
             cardDateTime.isVisible = true
-            textDateTime.text = interview.displayInterviewDate?.format(dateTimeFormatter) + if (interview.needsTimeConfirmation) " · Confirm timezone in Edit" else ""
+            textDateTime.text = interview.meetingRange(dateTimeFormatter)
         } else {
             labelDateTime.isVisible = false
             cardDateTime.isVisible = false

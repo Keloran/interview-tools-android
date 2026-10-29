@@ -43,7 +43,8 @@ class EditInterviewIdentityTest {
     @Test fun editingLocalDraftKeepsItLocalAndPreservesItsCompany() = runBlocking {
         editAndReload(null)
     }
-    private suspend fun editAndReload(serverId: Int?) {
+    @Test fun fullOutcomeAndClientFieldsSaveWithoutChangingIdentity() = runBlocking { editAndReload(null, true) }
+    private suspend fun editAndReload(serverId: Int?, changeDetails: Boolean = false) {
         val company = app.database.companyDao().insert(Company(serverId = if (serverId != null) 710 else null, name = "Edit test ${UUID.randomUUID()}"))
         companies += company
         val original = Interview(companyId = company, serverId = serverId, companyName = "Example",
@@ -69,6 +70,12 @@ class EditInterviewIdentityTest {
             assertTrue("Interview form did not load", loaded.await(10, TimeUnit.SECONDS))
             scenario.onActivity { activity ->
                 activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.editNotes).setText("Edited notes")
+                if (changeDetails) {
+                    activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.editClientCompany).setText("")
+                    val outcomes = activity.findViewById<android.widget.AutoCompleteTextView>(R.id.dropdownOutcome)
+                    val position = (0 until outcomes.adapter.count).first { outcomes.adapter.getItem(it) == "No response" }
+                    outcomes.onItemClickListener.onItemClick(null, outcomes, position, 0)
+                }
                 activity.findViewById<android.view.View>(R.id.buttonSave).performClick()
             }
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
@@ -77,7 +84,12 @@ class EditInterviewIdentityTest {
                 kotlinx.coroutines.delay(20)
                 edited = app.database.interviewDao().getInterviewById(id)!!
             }
-            assertEquals(original.copy(id = id, notes = "Edited notes", pendingChanges = edited.pendingChanges, localRevision = edited.localRevision), edited)
+            assertEquals(original.copy(id = id, notes = "Edited notes", clientCompany = if (changeDetails) null else original.clientCompany, outcome = if (changeDetails) tools.interviews.android.model.InterviewOutcome.NO_RESPONSE else original.outcome, pendingChanges = edited.pendingChanges, localRevision = edited.localRevision), edited)
+            if (changeDetails) {
+                val patch = com.google.gson.JsonParser.parseString(edited.pendingChanges).asJsonObject
+                assertTrue(patch.get("clientCompany").isJsonNull)
+                assertEquals("NO_RESPONSE", patch.get("outcome").asString)
+            }
             assertTrue(edited.localRevision > 0)
             assertEquals("Edited notes", com.google.gson.JsonParser.parseString(edited.pendingChanges).asJsonObject.get("notes").asString)
             val pending = app.database.interviewDao().getUnsyncedInterviews()

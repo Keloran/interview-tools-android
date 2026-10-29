@@ -3,6 +3,7 @@ package tools.interviews.android.adapter
 import tools.interviews.android.model.*
 import tools.interviews.android.model.needsTimeConfirmation
 import tools.interviews.android.model.displayInterviewDate
+import tools.interviews.android.model.meetingRange
 import tools.interviews.android.model.displayDeadline
 import android.animation.ValueAnimator
 import android.graphics.drawable.GradientDrawable
@@ -90,7 +91,7 @@ class InterviewAdapter(
 
             // Interview date or deadline
             textInterviewDate.text = when {
-                interview.displayInterviewDate != null -> interview.displayInterviewDate?.format(dateTimeFormatter) + if (interview.needsTimeConfirmation) " · Confirm timezone" else ""
+                interview.displayInterviewDate != null -> interview.meetingRange(dateTimeFormatter)
                 interview.displayDeadline != null -> "Deadline: ${interview.displayDeadline?.toLocalDate()?.format(dateFormatter)}"
                 else -> "Applied ${interview.applicationDate.format(dateFormatter)}"
             }

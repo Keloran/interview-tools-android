@@ -11,13 +11,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import tools.interviews.android.model.Company
 import tools.interviews.android.model.Interview
 
-@Database(entities = [Interview::class, Company::class], version = InterviewDatabase.VERSION, exportSchema = false)
+@Database(entities = [Interview::class, Company::class, ApplicationTimelineCache::class], version = InterviewDatabase.VERSION, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class InterviewDatabase : RoomDatabase() {
     abstract fun interviewDao(): InterviewDao
     abstract fun companyDao(): CompanyDao
+    abstract fun applicationTimelineDao(): ApplicationTimelineDao
 
     suspend fun clearAccountCache(ownerId: String, clearGuests: Boolean) = withTransaction {
+        applicationTimelineDao().deleteOwner(ownerId)
         interviewDao().deleteOwner(ownerId)
         interviewDao().deleteSynced("legacy") // unclaimed old server cache must not retain deleted account data
         if (clearGuests) interviewDao().deleteGuestLocal()
@@ -27,7 +29,7 @@ abstract class InterviewDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION = 10
+        const val VERSION = 11
         @Volatile
         private var INSTANCE: InterviewDatabase? = null
 
@@ -219,7 +221,13 @@ abstract class InterviewDatabase : RoomDatabase() {
             }
         }
 
-        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS application_timelines (ownerId TEXT NOT NULL, applicationId INTEGER NOT NULL, json TEXT NOT NULL, PRIMARY KEY(ownerId, applicationId))")
+            }
+        }
+
+        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
 
         fun getDatabase(context: Context): InterviewDatabase {
             return INSTANCE ?: synchronized(this) {

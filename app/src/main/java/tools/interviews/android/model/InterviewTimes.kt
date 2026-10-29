@@ -19,6 +19,13 @@ object InterviewTimes {
 
 val Interview.hasMeeting: Boolean get() = stage !in setOf(InterviewStage.APPLIED, InterviewStage.OFFER, InterviewStage.TECHNICAL_TEST) && (stage != InterviewStage.UNKNOWN || stageRecognized)
 val Interview.displayInterviewDate: LocalDateTime? get() = if (hasMeeting) interviewInstant?.let { InterviewTimes.local(it) } ?: interviewDate else null
+val Interview.meetingDurationMinutes: Int get() = durationMinutes?.takeIf { it in 15..480 } ?: 60
+val Interview.displayInterviewEnd: LocalDateTime? get() = if (!hasMeeting) null else
+    interviewInstant?.plusSeconds(meetingDurationMinutes * 60L)?.let { InterviewTimes.local(it) }
+        ?: displayInterviewDate?.plusMinutes(meetingDurationMinutes.toLong())
+fun Interview.meetingRange(format: java.time.format.DateTimeFormatter): String? = displayInterviewDate?.let {
+    "${it.format(format)} – ${displayInterviewEnd?.format(format)}" + if (needsTimeConfirmation) " · Confirm timezone" else ""
+}
 val Interview.displayDeadline: LocalDateTime? get() = when (stage) {
     InterviewStage.OFFER -> offerRespondBy?.atStartOfDay() ?: deadline
     InterviewStage.TECHNICAL_TEST -> deadlineInstant?.let { InterviewTimes.local(it) } ?: deadline

@@ -53,6 +53,8 @@ class EditInterviewActivity : AppCompatActivity() {
     private lateinit var dropdownStage: AutoCompleteTextView
     private lateinit var editCompanyName: AutoCompleteTextView
     private lateinit var editJobTitle: TextInputEditText
+    private lateinit var editClientCompany: TextInputEditText
+    private lateinit var dropdownOutcome: AutoCompleteTextView
     private lateinit var editJobListing: TextInputEditText
     private lateinit var sectionInterviewDetails: LinearLayout
     private lateinit var editInterviewDateTime: TextInputEditText
@@ -122,6 +124,9 @@ class EditInterviewActivity : AppCompatActivity() {
         dropdownStage = findViewById(R.id.dropdownStage)
         editCompanyName = findViewById(R.id.editCompanyName)
         editJobTitle = findViewById(R.id.editJobTitle)
+        editClientCompany = findViewById(R.id.editClientCompany)
+        dropdownOutcome = findViewById(R.id.dropdownOutcome)
+        findViewById<TextInputLayout>(R.id.layoutOutcome).isVisible = true
         editJobListing = findViewById(R.id.editJobListing)
         sectionInterviewDetails = findViewById(R.id.sectionInterviewDetails)
         editInterviewDateTime = findViewById(R.id.editInterviewDateTime)
@@ -183,6 +188,11 @@ class EditInterviewActivity : AppCompatActivity() {
         selectedOutcome = interview.outcome
         applicationDate = interview.applicationDate
 
+        editClientCompany.setText(interview.clientCompany.orEmpty())
+        val outcomes = InterviewOutcome.entries.filter { it != InterviewOutcome.UNKNOWN }
+        dropdownOutcome.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, outcomes.map { it.displayName }))
+        dropdownOutcome.setText(interview.outcomeLabel, false)
+        dropdownOutcome.setOnItemClickListener { _, _, position, _ -> selectedOutcome = outcomes[position] }
         editCompanyName.setText(interview.companyName)
         editJobTitle.setText(interview.jobTitle)
         editJobListing.setText(interview.jobListing ?: "")
@@ -444,6 +454,7 @@ class EditInterviewActivity : AppCompatActivity() {
         val jobListing = editJobListing.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
 
         val updatedInterview = original.copy(
+            clientCompany = editClientCompany.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = editCompanyName.text.toString().trim(),
             stage = selectedStage,
