@@ -108,6 +108,34 @@
 
             </com.google.android.material.card.MaterialCardView>
 
+            <LinearLayout android:id="@+id/sectionAccountData"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="24dp" android:orientation="vertical" android:visibility="gone">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/your_account_data" android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:textColor="?attr/colorPrimary" android:paddingBottom="8dp" />
+                <TextView android:id="@+id/accountActionStatus"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/account_action_busy" android:accessibilityLiveRegion="polite"
+                    android:visibility="gone" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/exportApplications"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/export_applications" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/exportStories"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/export_stories" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/deleteAccount"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/delete_account" android:textColor="?attr/colorError" />
+            </LinearLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/deletionWebsite"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/deletion_website" />
+
             <!-- Sync Section -->
             <LinearLayout
                 android:id="@+id/sectionSync"

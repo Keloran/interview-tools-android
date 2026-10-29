@@ -1,5 +1,6 @@
 package tools.interviews.android.data.api
 
+import tools.interviews.android.data.account.AccountOperationGate
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,8 @@ import com.google.gson.Gson
 class SyncService(
     private val interviewDao: InterviewDao,
     private val companyDao: CompanyDao,
-    private val apiService: APIService = APIService.getInstance()
+    private val apiService: APIService = APIService.getInstance(),
+    private val gate: AccountOperationGate = AccountOperationGate()
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -39,10 +41,10 @@ class SyncService(
 
     // MARK: - Sync All Data (Push then Pull)
 
-    suspend fun syncAll() {
+    suspend fun syncAll() = gate.run {
         if (_isSyncing.value) {
             Log.d(TAG, "Sync already in progress, skipping")
-            return
+            return@run
         }
 
         _isSyncing.value = true
@@ -147,7 +149,7 @@ class SyncService(
         for (interview in unsyncedInterviews) {
             try {
                 // Push to server
-                val apiInterview = pushInterview(interview)
+                val apiInterview = pushInterviewUnsafe(interview)
 
                 // Update local interview with server ID
                 val updatedInterview = interview.copy(serverId = apiInterview.id)
@@ -237,7 +239,9 @@ class SyncService(
 
     // MARK: - Push Single Interview to API
 
-    suspend fun pushInterview(interview: Interview): APIInterview {
+    suspend fun pushInterview(interview: Interview): APIInterview = gate.run { pushInterviewUnsafe(interview) }
+
+    private suspend fun pushInterviewUnsafe(interview: Interview): APIInterview {
         val request = CreateInterviewRequest(
             stage = interview.stage.displayName,
             companyName = interview.companyName,
@@ -260,7 +264,7 @@ class SyncService(
         return apiService.createInterview(request)
     }
 
-    suspend fun updateRemoteInterview(id: Int, interview: Interview): APIInterview {
+    suspend fun updateRemoteInterview(id: Int, interview: Interview): APIInterview = gate.run {
         val request = UpdateInterviewRequest(
             outcome = interview.outcome.name,  // Server expects uppercase: REJECTED, AWAITING_RESPONSE, etc.
             stage = interview.stage.displayName,
@@ -271,7 +275,7 @@ class SyncService(
             link = interview.link
         )
 
-        return apiService.updateInterview(id, request)
+        apiService.updateInterview(id, request)
     }
 
     // MARK: - Mapping Helpers
