@@ -7,7 +7,7 @@ class InterviewOutcomeTest {
 
     @Test
     fun `InterviewOutcome has correct number of values`() {
-        assertEquals(8, InterviewOutcome.entries.size)
+        assertEquals(10, InterviewOutcome.entries.size)
     }
 
     @Test
@@ -125,7 +125,9 @@ class InterviewOutcomeTest {
             InterviewOutcome.OFFER_RECEIVED,
             InterviewOutcome.OFFER_ACCEPTED,
             InterviewOutcome.OFFER_DECLINED,
-            InterviewOutcome.WITHDREW
+            InterviewOutcome.WITHDREW,
+            InterviewOutcome.NO_RESPONSE,
+            InterviewOutcome.UNKNOWN
         )
         assertEquals(expectedOrder, InterviewOutcome.entries.toList())
     }

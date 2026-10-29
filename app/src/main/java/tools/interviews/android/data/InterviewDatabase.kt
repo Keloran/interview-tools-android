@@ -27,7 +27,7 @@ abstract class InterviewDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION = 7
+        const val VERSION = 8
         @Volatile
         private var INSTANCE: InterviewDatabase? = null
 
@@ -191,7 +191,16 @@ abstract class InterviewDatabase : RoomDatabase() {
             }
         }
 
-        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE interviews ADD COLUMN serverStageName TEXT")
+                db.execSQL("ALTER TABLE interviews ADD COLUMN serverOutcomeName TEXT")
+                db.execSQL("UPDATE interviews SET serverStageName = stage, stage = 'UNKNOWN' WHERE stage NOT IN ('APPLIED','PHONE_SCREEN','FIRST_STAGE','SECOND_STAGE','THIRD_STAGE','FOURTH_STAGE','TECHNICAL_TEST','TECHNICAL_INTERVIEW','FINAL_STAGE','ONSITE','OFFER','UNKNOWN')")
+                db.execSQL("UPDATE interviews SET serverOutcomeName = outcome, outcome = 'UNKNOWN' WHERE outcome NOT IN ('SCHEDULED','AWAITING_RESPONSE','PASSED','REJECTED','OFFER_RECEIVED','OFFER_ACCEPTED','OFFER_DECLINED','WITHDREW','NO_RESPONSE','UNKNOWN')")
+            }
+        }
+
+        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
 
         fun getDatabase(context: Context): InterviewDatabase {
             return INSTANCE ?: synchronized(this) {

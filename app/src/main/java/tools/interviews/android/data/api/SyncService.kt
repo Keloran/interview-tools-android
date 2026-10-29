@@ -262,6 +262,9 @@ class SyncService(
 
     private suspend fun pushInterviewUnsafe(interview: Interview): APIInterview {
         if (interview.ownerId != currentAccount()) throw CancellationException("Interview belongs to another account.")
+        require(interview.stage != InterviewStage.UNKNOWN && interview.outcome != InterviewOutcome.UNKNOWN) {
+            "Choose a known stage and outcome before uploading a new record."
+        }
         val request = CreateInterviewRequest(
             stage = interview.stage.displayName,
             companyName = interview.companyName,
@@ -288,15 +291,7 @@ class SyncService(
     suspend fun updateRemoteInterview(id: Int, interview: Interview): APIInterview = gate.run {
         authenticate(interview.ownerId)
         if (interview.ownerId != currentAccount()) throw CancellationException("Interview belongs to another account.")
-        val request = UpdateInterviewRequest(
-            outcome = interview.outcome.name,  // Server expects uppercase: REJECTED, AWAITING_RESPONSE, etc.
-            stage = interview.stage.displayName,
-            date = interview.meetingWireValue(),
-            deadline = interview.deadlineWireValue(),
-            interviewer = interview.interviewer,
-            notes = interview.notes,
-            link = interview.link
-        )
+        val request = InterviewRequests.update(interview)
 
         apiService.updateInterview(id, request)
     }
@@ -338,6 +333,8 @@ class SyncService(
         return Interview(
             id = existingLocalId ?: 0, // Use existing local ID or let Room auto-generate
             ownerId = ownerId,
+            serverStageName = apiInterview.stage?.stage,
+            serverOutcomeName = apiInterview.outcome,
             serverId = apiInterview.id, // Always set the server ID
             companyId = companyId, // Link to Company table
             jobTitle = apiInterview.jobTitle,
@@ -360,9 +357,9 @@ class SyncService(
 
     // Made internal for testing
     internal fun mapApiStageToLocal(stageName: String?): InterviewStage {
-        if (stageName == null) return InterviewStage.APPLIED
+        if (stageName == null) return InterviewStage.UNKNOWN
 
-        return when (stageName.lowercase()) {
+        return when (stageName.trim().lowercase()) {
             "applied" -> InterviewStage.APPLIED
             "phone screen" -> InterviewStage.PHONE_SCREEN
             "first stage" -> InterviewStage.FIRST_STAGE
@@ -374,7 +371,7 @@ class SyncService(
             "final stage" -> InterviewStage.FINAL_STAGE
             "onsite" -> InterviewStage.ONSITE
             "offer" -> InterviewStage.OFFER
-            else -> InterviewStage.APPLIED
+            else -> InterviewStage.UNKNOWN
         }
     }
 
@@ -392,9 +389,9 @@ class SyncService(
 
     // Made internal for testing
     internal fun mapApiOutcomeToLocal(outcomeName: String?): InterviewOutcome {
-        if (outcomeName == null) return InterviewOutcome.SCHEDULED
+        if (outcomeName == null) return InterviewOutcome.UNKNOWN
 
-        return when (outcomeName.lowercase()) {
+        return when (outcomeName.trim().lowercase()) {
             "scheduled" -> InterviewOutcome.SCHEDULED
             "awaiting response", "awaiting_response", "pending" -> InterviewOutcome.AWAITING_RESPONSE
             "passed" -> InterviewOutcome.PASSED
@@ -403,7 +400,8 @@ class SyncService(
             "offer accepted", "offer_accepted" -> InterviewOutcome.OFFER_ACCEPTED
             "offer declined", "offer_declined" -> InterviewOutcome.OFFER_DECLINED
             "withdrew", "withdrawn" -> InterviewOutcome.WITHDREW
-            else -> InterviewOutcome.SCHEDULED
+            "no_response", "no response", "ghosted" -> InterviewOutcome.NO_RESPONSE
+            else -> InterviewOutcome.UNKNOWN
         }
     }
 

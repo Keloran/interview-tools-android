@@ -200,9 +200,9 @@ class AddInterviewActivity : AppCompatActivity() {
     private fun setupDropdowns() {
         // Stage dropdown - exclude Applied in next stage mode
         val availableStages = if (isNextStageMode) {
-            InterviewStage.entries.filter { it != InterviewStage.APPLIED }
+            InterviewStage.entries.filter { it != InterviewStage.APPLIED && it != InterviewStage.UNKNOWN }
         } else {
-            InterviewStage.entries.toList()
+            InterviewStage.entries.filter { it != InterviewStage.UNKNOWN }
         }
         val stages = availableStages.map { it.displayName }
         val stageAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, stages)

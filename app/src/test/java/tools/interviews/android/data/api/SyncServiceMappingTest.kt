@@ -26,9 +26,9 @@ class SyncServiceMappingTest {
     // ==================== Stage Mapping Tests ====================
 
     @Test
-    fun `mapApiStageToLocal returns APPLIED for null`() {
+    fun `mapApiStageToLocal returns UNKNOWN for null`() {
         val result = syncService.mapApiStageToLocal(null)
-        assertEquals(InterviewStage.APPLIED, result)
+        assertEquals(InterviewStage.UNKNOWN, result)
     }
 
     @Test
@@ -63,20 +63,20 @@ class SyncServiceMappingTest {
     }
 
     @Test
-    fun `mapApiStageToLocal returns APPLIED for unknown stage`() {
-        assertEquals(InterviewStage.APPLIED, syncService.mapApiStageToLocal("Unknown Stage"))
-        assertEquals(InterviewStage.APPLIED, syncService.mapApiStageToLocal("Fifth Stage"))
-        assertEquals(InterviewStage.APPLIED, syncService.mapApiStageToLocal("HR Interview"))
+    fun `mapApiStageToLocal returns UNKNOWN for unknown stage`() {
+        assertEquals(InterviewStage.UNKNOWN, syncService.mapApiStageToLocal("Unknown Stage"))
+        assertEquals(InterviewStage.UNKNOWN, syncService.mapApiStageToLocal("Fifth Stage"))
+        assertEquals(InterviewStage.UNKNOWN, syncService.mapApiStageToLocal("HR Interview"))
     }
 
     @Test
-    fun `mapApiStageToLocal returns APPLIED for empty string`() {
-        assertEquals(InterviewStage.APPLIED, syncService.mapApiStageToLocal(""))
+    fun `mapApiStageToLocal returns UNKNOWN for empty string`() {
+        assertEquals(InterviewStage.UNKNOWN, syncService.mapApiStageToLocal(""))
     }
 
     @Test
-    fun `mapApiStageToLocal returns APPLIED for whitespace only`() {
-        assertEquals(InterviewStage.APPLIED, syncService.mapApiStageToLocal("   "))
+    fun `mapApiStageToLocal returns UNKNOWN for whitespace only`() {
+        assertEquals(InterviewStage.UNKNOWN, syncService.mapApiStageToLocal("   "))
     }
 
     @Test
@@ -136,12 +136,18 @@ class SyncServiceMappingTest {
         assertNull(syncService.mapApiMethodToLocal("   "))
     }
 
+    @Test fun `ghosted outcomes retain their server meaning`() {
+        for (value in listOf("NO_RESPONSE", "no response", "ghosted")) {
+            assertEquals(InterviewOutcome.NO_RESPONSE, syncService.mapApiOutcomeToLocal(value))
+        }
+    }
+
     // ==================== Outcome Mapping Tests ====================
 
     @Test
-    fun `mapApiOutcomeToLocal returns SCHEDULED for null`() {
+    fun `mapApiOutcomeToLocal returns UNKNOWN for null`() {
         val result = syncService.mapApiOutcomeToLocal(null)
-        assertEquals(InterviewOutcome.SCHEDULED, result)
+        assertEquals(InterviewOutcome.UNKNOWN, result)
     }
 
     @Test
@@ -179,20 +185,20 @@ class SyncServiceMappingTest {
     }
 
     @Test
-    fun `mapApiOutcomeToLocal returns SCHEDULED for unknown outcome`() {
-        assertEquals(InterviewOutcome.SCHEDULED, syncService.mapApiOutcomeToLocal("unknown"))
-        assertEquals(InterviewOutcome.SCHEDULED, syncService.mapApiOutcomeToLocal("in progress"))
-        assertEquals(InterviewOutcome.SCHEDULED, syncService.mapApiOutcomeToLocal("completed"))
+    fun `mapApiOutcomeToLocal returns UNKNOWN for unknown outcome`() {
+        assertEquals(InterviewOutcome.UNKNOWN, syncService.mapApiOutcomeToLocal("unknown"))
+        assertEquals(InterviewOutcome.UNKNOWN, syncService.mapApiOutcomeToLocal("in progress"))
+        assertEquals(InterviewOutcome.UNKNOWN, syncService.mapApiOutcomeToLocal("completed"))
     }
 
     @Test
-    fun `mapApiOutcomeToLocal returns SCHEDULED for empty string`() {
-        assertEquals(InterviewOutcome.SCHEDULED, syncService.mapApiOutcomeToLocal(""))
+    fun `mapApiOutcomeToLocal returns UNKNOWN for empty string`() {
+        assertEquals(InterviewOutcome.UNKNOWN, syncService.mapApiOutcomeToLocal(""))
     }
 
     @Test
-    fun `mapApiOutcomeToLocal returns SCHEDULED for whitespace only`() {
-        assertEquals(InterviewOutcome.SCHEDULED, syncService.mapApiOutcomeToLocal("   "))
+    fun `mapApiOutcomeToLocal returns UNKNOWN for whitespace only`() {
+        assertEquals(InterviewOutcome.UNKNOWN, syncService.mapApiOutcomeToLocal("   "))
     }
 
     @Test

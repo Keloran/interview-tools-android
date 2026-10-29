@@ -19,6 +19,9 @@
     <color name="outcome_offer_declined">#FFFF9800</color>
     <color name="outcome_withdrew">#FF9E9E9E</color>
 
+    <color name="outcome_no_response">#FF546E7A</color>
+    <color name="outcome_unknown">#FF6D4C41</color>
+
     <!-- Badge Colors -->
     <color name="badge_stage_background">#9400D3</color>
     <color name="badge_method_background">#E30B5C</color>

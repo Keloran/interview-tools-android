@@ -11,5 +11,6 @@ enum class InterviewStage(val displayName: String) {
     TECHNICAL_INTERVIEW("Technical Interview"),
     FINAL_STAGE("Final Stage"),
     ONSITE("Onsite"),
-    OFFER("Offer")
+    OFFER("Offer"),
+    UNKNOWN("Unknown stage")
 }

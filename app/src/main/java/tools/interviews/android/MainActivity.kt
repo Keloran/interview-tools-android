@@ -1,5 +1,6 @@
 package tools.interviews.android
 
+import tools.interviews.android.model.*
 import tools.interviews.android.model.displayInterviewDate
 import tools.interviews.android.model.displayDeadline
 import android.content.Context
@@ -639,7 +640,7 @@ class MainActivity : AppCompatActivity() {
                     val relevantDate = interview.displayInterviewDate?.toLocalDate()
                         ?: interview.displayDeadline?.toLocalDate()
                         ?: interview.applicationDate
-                    !relevantDate.isBefore(today)
+                    interview.isUpcomingRecord && !relevantDate.isBefore(today)
                 }.sortedBy {
                     it.displayInterviewDate ?: it.displayDeadline ?: it.applicationDate.atStartOfDay()
                 }

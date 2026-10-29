@@ -20,7 +20,7 @@ import tools.interviews.android.data.api.SyncRemote
 import tools.interviews.android.data.api.SyncService
 import tools.interviews.android.model.Company
 import tools.interviews.android.model.Interview
-import tools.interviews.android.model.InterviewStage
+import tools.interviews.android.model.*
 
 @RunWith(AndroidJUnit4::class)
 class SyncReconciliationTest {
@@ -38,6 +38,29 @@ class SyncReconciliationTest {
             block()
             if (failCommit) throw IOException("commit failed")
         } })
+
+    @Test fun downloadedGhostedAndFutureStatusesNeverBecomeScheduled() = runBlocking {
+        val remote = object : SyncRemote {
+            override fun checkSession() {}
+            override suspend fun companies() = listOf(APICompany(10, "Example"))
+            override suspend fun interviews(take: Int, skip: Int) = listOf(
+                row(1).copy(stage = APIStage(2, "First stage"), date = "2099-06-01T09:00:00Z", outcome = "NO_RESPONSE"),
+                row(2).copy(stage = APIStage(99, "Future panel"), outcome = "PAUSED_BY_EMPLOYER"))
+            override suspend fun interview(id: Int): APIInterview? = null
+        }
+        val sync = service(remote)
+        sync.syncAll()
+        assertNull(sync.syncError.value)
+        val ghosted = db.interviewDao().getInterviewByServerId(1, account)!!
+        assertEquals(InterviewOutcome.NO_RESPONSE, ghosted.outcome)
+        assertFalse(ghosted.isUpcomingRecord)
+        val future = db.interviewDao().getInterviewByServerId(2, account)!!
+        assertEquals("Future panel", future.stageLabel)
+        assertEquals("PAUSED_BY_EMPLOYER", future.outcomeLabel)
+        assertFalse(future.isUpcomingRecord)
+        assertNull(tools.interviews.android.data.api.InterviewRequests.update(future).stage)
+        assertNull(tools.interviews.android.data.api.InterviewRequests.update(future).outcome)
+    }
 
     @Test fun downloadedMeetingRetainsItsInstantInRoom() = runBlocking {
         val remote = object : SyncRemote {

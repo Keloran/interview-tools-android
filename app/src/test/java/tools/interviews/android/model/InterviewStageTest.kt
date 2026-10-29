@@ -7,7 +7,7 @@ class InterviewStageTest {
 
     @Test
     fun `InterviewStage has correct number of values`() {
-        assertEquals(11, InterviewStage.entries.size)
+        assertEquals(12, InterviewStage.entries.size)
     }
 
     @Test
@@ -126,7 +126,8 @@ class InterviewStageTest {
             InterviewStage.TECHNICAL_INTERVIEW,
             InterviewStage.FINAL_STAGE,
             InterviewStage.ONSITE,
-            InterviewStage.OFFER
+            InterviewStage.OFFER,
+            InterviewStage.UNKNOWN
         )
         assertEquals(expectedOrder, InterviewStage.entries.toList())
     }

@@ -42,7 +42,7 @@ class Converters {
 
     @TypeConverter
     fun toInterviewStage(value: String): InterviewStage {
-        return InterviewStage.valueOf(value)
+        return InterviewStage.entries.firstOrNull { it.name == value } ?: InterviewStage.UNKNOWN
     }
 
     // InterviewMethod converters
@@ -64,6 +64,6 @@ class Converters {
 
     @TypeConverter
     fun toInterviewOutcome(value: String): InterviewOutcome {
-        return InterviewOutcome.valueOf(value)
+        return InterviewOutcome.entries.firstOrNull { it.name == value } ?: InterviewOutcome.UNKNOWN
     }
 }

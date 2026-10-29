@@ -45,5 +45,7 @@ data class Interview(
     // Legacy wall-clock columns remain recoverable, with no assumed timezone.
     val interviewInstant: Instant? = null,
     val deadlineInstant: Instant? = null,
-    val offerRespondBy: LocalDate? = null
+    val offerRespondBy: LocalDate? = null,
+    val serverStageName: String? = null,
+    val serverOutcomeName: String? = null
 )
