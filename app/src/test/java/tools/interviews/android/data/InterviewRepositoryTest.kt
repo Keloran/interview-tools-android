@@ -32,18 +32,21 @@ class InterviewRepositoryTest {
     @Test
     fun `insert calls dao insert and returns id`() = runTest {
         val interview = createTestInterview()
-        coEvery { mockInterviewDao.insert(interview) } returns 42L
+        coEvery { mockInterviewDao.insert(any()) } returns 42L
 
         val result = repository.insert(interview)
 
         assertEquals(42L, result)
-        coVerify(exactly = 1) { mockInterviewDao.insert(interview) }
+        coVerify(exactly = 1) { mockInterviewDao.insert(match {
+            it.id == interview.id && it.jobTitle == interview.jobTitle && it.ownerId == interview.ownerId &&
+                runCatching { java.util.UUID.fromString(it.clientMutationId) }.isSuccess
+        }) }
     }
 
     @Test
     fun `insert with zero id creates new record`() = runTest {
         val interview = createTestInterview(id = 0)
-        coEvery { mockInterviewDao.insert(interview) } returns 1L
+        coEvery { mockInterviewDao.insert(any()) } returns 1L
 
         val result = repository.insert(interview)
 

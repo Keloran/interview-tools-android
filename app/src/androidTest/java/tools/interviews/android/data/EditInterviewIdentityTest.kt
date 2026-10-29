@@ -77,7 +77,9 @@ class EditInterviewIdentityTest {
                 kotlinx.coroutines.delay(20)
                 edited = app.database.interviewDao().getInterviewById(id)!!
             }
-            assertEquals(original.copy(id = id, notes = "Edited notes"), edited)
+            assertEquals(original.copy(id = id, notes = "Edited notes", pendingChanges = edited.pendingChanges, localRevision = edited.localRevision), edited)
+            assertTrue(edited.localRevision > 0)
+            assertEquals("Edited notes", com.google.gson.JsonParser.parseString(edited.pendingChanges).asJsonObject.get("notes").asString)
             val pending = app.database.interviewDao().getUnsyncedInterviews()
             assertEquals(serverId == null, pending.any { it.id == id })
             if (serverId != null) {
@@ -91,7 +93,16 @@ class EditInterviewIdentityTest {
                         clientCompany = "Private client", notes = "Edited notes", metadata = null, link = null))
                     override suspend fun interview(id: Int): APIInterview? = null
                 }
-                val sync = SyncService(app.database.interviewDao(), app.database.companyDao(),
+                val writes = object : SyncWrites {
+                    override suspend fun createInterview(request: CreateInterviewRequest): APIInterview = error("An edit must not create another interview")
+                    override suspend fun updateInterview(id: Int, request: UpdateInterviewRequest): APIInterview = error("Use a patch")
+                    override suspend fun patchInterview(id: Int, patch: com.google.gson.JsonObject): APIInterview {
+                        assertEquals(serverId, id)
+                        assertEquals("Edited notes", patch.get("notes").asString)
+                        return remote.interviews(200, 0).single()
+                    }
+                }
+                val sync = SyncService(app.database.interviewDao(), app.database.companyDao(), writes = writes,
                     currentAccount = { AccountOwners.GUEST }, remoteFactory = { remote },
                     transaction = { block -> app.database.withTransaction { block() } })
                 sync.syncAll()

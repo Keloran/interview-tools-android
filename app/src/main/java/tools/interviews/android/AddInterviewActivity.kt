@@ -453,10 +453,10 @@ class AddInterviewActivity : AppCompatActivity() {
         }
 
         // Set outcome based on stage
-        val outcome = if (selectedStage == InterviewStage.APPLIED) {
-            InterviewOutcome.AWAITING_RESPONSE
-        } else {
-            InterviewOutcome.SCHEDULED
+        val outcome = when (selectedStage) {
+            InterviewStage.APPLIED -> InterviewOutcome.AWAITING_RESPONSE
+            InterviewStage.OFFER -> InterviewOutcome.OFFER_RECEIVED
+            else -> InterviewOutcome.SCHEDULED
         }
 
         // For Technical Test, use the test link; otherwise use meeting link
@@ -512,41 +512,23 @@ class AddInterviewActivity : AppCompatActivity() {
                 val localId = repository.insert(interviewWithCompany)
                 Log.d(TAG, "Interview saved locally with id: $localId")
 
-                // The sync service resolves and acknowledges parent stages before their children.
-                if (Clerk.user != null) {
-                    try {
-                        syncService.syncAll()
-                        syncService.syncError.value?.let { throw it }
-                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                        throw cancelled
-                    } catch (e: Exception) {
-                        Snackbar.make(buttonSave, "Saved locally (sync needs retry)", Snackbar.LENGTH_LONG).show()
-                    }
-                }
-
                 // If this is next stage mode, mark the previous interview as passed
                 previousInterviewId?.let { prevId ->
                     try {
                         val previousInterview = repository.getById(prevId)
                         if (previousInterview != null) {
                             val updatedPrevious = previousInterview.copy(outcome = InterviewOutcome.PASSED)
-                            repository.update(updatedPrevious)
+                            repository.saveChanges(previousInterview, updatedPrevious)
                             Log.d(TAG, "Previous interview $prevId marked as PASSED")
 
-                            // Sync to server if previously synced
-                            if (previousInterview.serverId != null && repository.getById(localId)?.serverId != null && Clerk.user != null) {
-                                try {
-                                    syncService.updateRemoteInterview(previousInterview.serverId, updatedPrevious)
-                                    Log.d(TAG, "Previous interview updated on server")
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "Failed to update previous interview on server: ${e.message}", e)
-                                }
-                            }
+
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to update previous interview: ${e.message}", e)
                     }
                 }
+
+                (application as InterviewApplication).schedulePendingSync(screenOwner)
 
                 // Return success
                 setResult(RESULT_OK)

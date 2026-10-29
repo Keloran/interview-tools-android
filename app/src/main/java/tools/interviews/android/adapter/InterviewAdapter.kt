@@ -62,6 +62,7 @@ class InterviewAdapter(
         private val outcomeIndicator: View = itemView.findViewById(R.id.outcomeIndicator)
         private val textJobTitle: TextView = itemView.findViewById(R.id.textJobTitle)
         private val textCompanyName: TextView = itemView.findViewById(R.id.textCompanyName)
+        private val textSyncStatus: TextView = itemView.findViewById(R.id.textSyncStatus)
         private val textInterviewDate: TextView = itemView.findViewById(R.id.textInterviewDate)
         private val badgeStage: TextView = itemView.findViewById(R.id.badgeStage)
         private val badgeMethod: TextView = itemView.findViewById(R.id.badgeMethod)
@@ -93,6 +94,9 @@ class InterviewAdapter(
                 interview.displayDeadline != null -> "Deadline: ${interview.displayDeadline?.toLocalDate()?.format(dateFormatter)}"
                 else -> "Applied ${interview.applicationDate.format(dateFormatter)}"
             }
+
+            textSyncStatus.isVisible = interview.syncLabel != null
+            textSyncStatus.text = interview.syncLabel
 
             // Stage badge
             badgeStage.text = interview.stageLabel

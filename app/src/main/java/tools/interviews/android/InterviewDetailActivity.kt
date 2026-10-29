@@ -39,6 +39,7 @@ class InterviewDetailActivity : AppCompatActivity() {
 
     private lateinit var buttonAwaiting: ImageButton
     private lateinit var textJobTitle: TextView
+    private lateinit var textSyncStatus: TextView
     private lateinit var textCompanyName: TextView
     private lateinit var badgeOutcome: TextView
     private lateinit var badgeStage: TextView
@@ -65,6 +66,7 @@ class InterviewDetailActivity : AppCompatActivity() {
 
     private lateinit var repository: InterviewRepository
     private lateinit var syncService: SyncService
+    private var interviewJob: kotlinx.coroutines.Job? = null
     private var interviewId: Long = -1
     private var interview: Interview? = null
 
@@ -117,6 +119,7 @@ class InterviewDetailActivity : AppCompatActivity() {
         buttonAwaiting = findViewById(R.id.buttonAwaiting)
         textJobTitle = findViewById(R.id.textJobTitle)
         textCompanyName = findViewById(R.id.textCompanyName)
+        textSyncStatus = findViewById(R.id.textSyncStatus)
         badgeOutcome = findViewById(R.id.badgeOutcome)
         badgeStage = findViewById(R.id.badgeStage)
         badgeMethod = findViewById(R.id.badgeMethod)
@@ -163,9 +166,12 @@ class InterviewDetailActivity : AppCompatActivity() {
     }
 
     private fun loadInterview() {
-        lifecycleScope.launch {
-            interview = repository.getById(interviewId)
-            interview?.let { displayInterview(it) } ?: finish()
+        interviewJob?.cancel()
+        interviewJob = lifecycleScope.launch {
+            repository.observeById(interviewId).collect { saved ->
+                interview = saved
+                saved?.let { displayInterview(it) } ?: finish()
+            }
         }
     }
 
@@ -173,6 +179,8 @@ class InterviewDetailActivity : AppCompatActivity() {
         // Basic info
         textJobTitle.text = interview.jobTitle
         textCompanyName.text = interview.companyName
+        textSyncStatus.isVisible = interview.syncLabel != null
+        textSyncStatus.text = interview.syncIssue ?: interview.syncLabel
 
         // Outcome badge
         badgeOutcome.text = interview.outcomeLabel
@@ -329,21 +337,13 @@ class InterviewDetailActivity : AppCompatActivity() {
     private fun updateInterviewOutcome(interview: Interview, newOutcome: InterviewOutcome) {
         lifecycleScope.launch {
             val updatedInterview = interview.copy(outcome = newOutcome)
-            repository.update(updatedInterview)
-            this@InterviewDetailActivity.interview = updatedInterview
-            displayInterview(updatedInterview)
+            repository.saveChanges(interview, updatedInterview)
+            val saved = repository.getById(interview.id) ?: return@launch
+            this@InterviewDetailActivity.interview = saved
+            displayInterview(saved)
 
-            // If interview has been synced to server, update remotely too
-            if (interview.serverId != null) {
-                try {
+            (application as InterviewApplication).schedulePendingSync(interview.ownerId)
 
-                    syncService.updateRemoteInterview(interview.serverId, updatedInterview)
-                    Log.d(TAG, "Updated interview outcome on server: ${newOutcome.name}")
-
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to update outcome on server: ${e.message}", e)
-                }
-            }
         }
     }
 

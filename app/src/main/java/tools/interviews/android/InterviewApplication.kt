@@ -37,11 +37,21 @@ class InterviewApplication : Application() {
     fun ownerNow() = sessionController.effectiveOwner(Clerk.user?.id)
     suspend fun signOutAccount() = sessionController.signOut({ Clerk.user?.id }) { Clerk.auth.signOut() }
 
+    fun schedulePendingSync(expectedOwner: String = ownerNow()) {
+        if (expectedOwner == AccountOwners.GUEST) return
+        applicationScope.launch {
+            if (ownerNow() != expectedOwner) return@launch
+            try { syncService.pushPending() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { /* The durable queue and sync state retain the failure. */ }
+        }
+    }
+
     suspend fun authenticateAccount(expectedOwner: String): String {
         if (Clerk.user?.id != expectedOwner || ownerNow() != expectedOwner) throw CancellationException("Account changed before authentication.")
         APIService.getInstance().setAuthToken(null)
         val session = Clerk.sessionFlow.value ?: error("Please sign in again.")
-        val jwt = session.fetchToken(GetTokenOptions(skipCache = true)).successOrNull()?.jwt ?: error("Session expired. Please sign in again.")
+        val jwt = session.fetchToken(GetTokenOptions(skipCache = true)).successOrNull()?.jwt ?: error("Couldn't refresh sign-in. Check your connection and try again.")
         if (Clerk.user?.id != expectedOwner || ownerNow() != expectedOwner) throw CancellationException("Account changed during authentication.")
         APIService.getInstance().setAuthToken(jwt)
         return jwt

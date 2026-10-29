@@ -12,3 +12,10 @@ fun Interview.stageWireValue(): String? = if (stage == InterviewStage.UNKNOWN) {
     serverStageName.takeIf { stageRecognized && stageSelectionChanged }
 } else stage.displayName
 fun Interview.outcomeWireValue(): String? = outcome.takeUnless { it == InterviewOutcome.UNKNOWN }?.name
+
+val Interview.syncLabel: String? get() = when {
+    ownerId == tools.interviews.android.data.account.AccountOwners.GUEST -> null
+    syncIssue != null -> "Sync needs retry"
+    serverId == null || pendingChanges != null -> "Waiting to sync"
+    else -> null
+}
