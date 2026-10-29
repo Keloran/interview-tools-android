@@ -52,6 +52,7 @@ class AddInterviewActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "AddInterviewActivity"
+        const val EXTRA_PREFILL_APPLICATION = "prefill_application"
         const val EXTRA_SELECTED_DATE = "selected_date"
         const val EXTRA_INTERVIEW = "interview"
         const val EXTRA_COMPANIES = "companies"
@@ -179,6 +180,12 @@ class AddInterviewActivity : AppCompatActivity() {
 
         findViewById<TextInputEditText>(R.id.editClientCompany).setText(intent.getStringExtra(EXTRA_CLIENT_COMPANY).orEmpty())
 
+        if (intent.getBooleanExtra(EXTRA_PREFILL_APPLICATION, false)) {
+            editCompanyName.setText(intent.getStringExtra(EXTRA_COMPANY_NAME).orEmpty())
+            editJobTitle.setText(intent.getStringExtra(EXTRA_JOB_TITLE).orEmpty())
+            editJobListing.setText(intent.getStringExtra(EXTRA_JOB_LISTING).orEmpty())
+            editNotes.setText(intent.getStringExtra(EXTRA_NOTES).orEmpty())
+        }
         // Check if this is next stage mode
         isNextStageMode = intent.getBooleanExtra(EXTRA_NEXT_STAGE_MODE, false)
         if (isNextStageMode) {
