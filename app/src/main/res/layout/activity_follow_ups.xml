@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:fitsSystemWindows="true">
+<com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="?attr/actionBarSize" app:title="Follow-ups and quiet applications" app:navigationIcon="@drawable/ic_arrow_back"/>
+<androidx.core.widget.NestedScrollView android:layout_width="match_parent" android:layout_height="match_parent"><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Review due follow-ups and promised reply dates. Share an editable message, then record a follow-up once you have sent it." android:textAppearance="?attr/textAppearanceBodyMedium"/>
+<com.google.android.material.button.MaterialButton android:id="@+id/buttonRefreshFollowUps" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Refresh and retry pending records"/>
+<com.google.android.material.button.MaterialButton android:id="@+id/buttonEnableFollowUpReminders" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Enable follow-up reminders"/>
+<TextView android:id="@+id/textFollowUpStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:accessibilityLiveRegion="polite"/>
+<LinearLayout android:id="@+id/followUpEntries" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/>
+</LinearLayout></androidx.core.widget.NestedScrollView></LinearLayout>

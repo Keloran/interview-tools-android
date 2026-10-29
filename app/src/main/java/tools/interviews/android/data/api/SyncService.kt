@@ -28,7 +28,8 @@ class SyncService(
     private val currentAccount: () -> String? = { null },
     private val authenticate: suspend (String) -> Unit = {},
     private val remoteFactory: () -> SyncRemote = { apiService.syncRemote() },
-    private val transaction: suspend (suspend () -> Unit) -> Unit = { block -> block() }
+    private val transaction: suspend (suspend () -> Unit) -> Unit = { block -> block() },
+    private val additionalWrites: suspend (String) -> Unit = {}
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -70,6 +71,7 @@ class SyncService(
             if (currentAccount() != account) throw CancellationException("Account changed before syncing.")
             val result = PendingSyncEngine(interviewDao, writes, currentAccount, authenticate).sync(account)
             _pendingResult.value = result
+            additionalWrites(account)
             if (result.failed > 0 || result.remaining > 0) throw java.io.IOException(if (result.failed > 0) "Some interviews need retry. Your changes are saved on this device." else "More changes are waiting to sync. Your edits are saved.")
             val remote = remoteFactory()
             fun checkAccount() {

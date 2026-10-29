@@ -266,6 +266,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
+        toolbar.menu.add("Follow-ups and quiet applications").setOnMenuItemClickListener {
+            startActivity(Intent(this, FollowUpsActivity::class.java).putExtra("expected_owner",(application as InterviewApplication).ownerNow()));true
+        }
         toolbar.menu.add("Questions and STAR stories").setOnMenuItemClickListener {
             startActivity(Intent(this, InterviewBankActivity::class.java)); true
         }
