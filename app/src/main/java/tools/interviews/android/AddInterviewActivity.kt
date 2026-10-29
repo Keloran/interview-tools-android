@@ -177,6 +177,8 @@ class AddInterviewActivity : AppCompatActivity() {
             initialDate = LocalDate.parse(dateString)
         }
 
+        findViewById<TextInputEditText>(R.id.editClientCompany).setText(intent.getStringExtra(EXTRA_CLIENT_COMPANY).orEmpty())
+
         // Check if this is next stage mode
         isNextStageMode = intent.getBooleanExtra(EXTRA_NEXT_STAGE_MODE, false)
         if (isNextStageMode) {
@@ -475,6 +477,7 @@ class AddInterviewActivity : AppCompatActivity() {
         val interview = Interview(
             id = 0,
             serverId = null, // Not synced yet
+            clientCompany = findViewById<TextInputEditText>(R.id.editClientCompany).text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             jobTitle = editJobTitle.text.toString().trim(),
             companyName = companyName,
             stage = selectedStage,

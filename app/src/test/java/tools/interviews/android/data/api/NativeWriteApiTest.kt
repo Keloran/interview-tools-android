@@ -48,6 +48,15 @@ class NativeWriteApiTest {
         assertFalse(body.has("date"))
         assertFalse(body.has("outcome"))
     }
+    @Test fun `application history and first reply use owned application endpoints with explicit clears`() = runTest {
+        val api = APIService.forTesting("https://example.test/api/", factory)
+        api.timeline(77)
+        api.firstReply(77, JsonParser.parseString("{\"firstResponseAt\":null}").asJsonObject)
+        assertEquals(listOf("/api/applications/77/timeline", "/api/applications/77/first-response"), requests.map { it.url.encodedPath })
+        assertEquals("PUT", requests.last().method)
+        val body = JsonParser.parseString(Buffer().also { requests.last().body!!.writeTo(it) }.readUtf8()).asJsonObject
+        assertTrue(body.get("firstResponseAt").isJsonNull)
+    }
     @Test fun `older servers never receive a fallback create at the unsafe legacy URL`() = runTest {
         status = 404
         val api = APIService.forTesting("https://example.test/api/", factory)

@@ -465,6 +465,27 @@
                 android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="December 10, 2025" />
 
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="24dp" android:text="Application timeline"
+                android:textAppearance="?attr/textAppearanceTitleLarge" />
+            <TextView android:id="@+id/textTimelineStatus" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/buttonTimelineRefresh"
+                style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="Refresh timeline" />
+            <TextView android:id="@+id/textFirstReply" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="First reply: Unknown"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Record a date only when you know it. Historical reply times remain unknown. Saving requires a connection."
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/buttonFirstReply"
+                style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="Edit first-reply date" />
+            <LinearLayout android:id="@+id/timelineEvents" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical" />
+
             <!-- Delete Button -->
 
             <!-- Bottom spacing -->

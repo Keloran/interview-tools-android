@@ -70,6 +70,10 @@ class InterviewApplication : Application() {
             { APIService.getInstance().setAuthToken(null) }, File(cacheDir, "account-exports"))
     }
 
+    val applicationHistory by lazy {
+        tools.interviews.android.data.api.ApplicationHistory(database.applicationTimelineDao(), APIService.getInstance(),
+            accountGate, ::ownerNow, { authenticateAccount(it) })
+    }
     val database by lazy { InterviewDatabase.getDatabase(this) }
     val repository by lazy { InterviewRepository(database.interviewDao(), database.companyDao(), accountGate,
         owner, ::ownerNow, { block -> database.withTransaction { block() } }) }

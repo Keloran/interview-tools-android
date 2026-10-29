@@ -18,6 +18,11 @@ interface InterviewsAPI {
     @GET("mobile-capabilities")
     suspend fun mobileCapabilities(): JsonObject
 
+    @GET("applications/{id}/timeline")
+    suspend fun applicationTimeline(@Path("id") id: Int): JsonObject
+    @PUT("applications/{id}/first-response")
+    suspend fun saveFirstReply(@Path("id") id: Int, @Body body: okhttp3.RequestBody): JsonObject
+
     // Companies
     @GET("companies")
     suspend fun fetchCompanies(): List<APICompany>
@@ -60,7 +65,7 @@ interface InterviewsAPI {
     ): APIInterview
 }
 
-class APIService private constructor(private val baseUrl: String = BASE_URL, private val calls: okhttp3.Call.Factory? = null) : SyncWrites {
+class APIService private constructor(private val baseUrl: String = BASE_URL, private val calls: okhttp3.Call.Factory? = null) : SyncWrites, ApplicationTimelineRemote {
     companion object {
         private const val BASE_URL = "https://interviews.tools/api/"
 
@@ -151,6 +156,10 @@ class APIService private constructor(private val baseUrl: String = BASE_URL, pri
             }
         }
     }
+
+    override suspend fun timeline(id: Int) = getApi().applicationTimeline(id)
+    override suspend fun firstReply(id: Int, body: JsonObject) = getApi().saveFirstReply(id,
+        body.toString().toRequestBody("application/json".toMediaType()))
 
     // MARK: - Companies
 
